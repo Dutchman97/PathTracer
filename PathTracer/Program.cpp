@@ -1,6 +1,8 @@
 #include "Program.h"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 GLFWwindow* Program::_glfwWindow;
@@ -12,6 +14,83 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_InitializeGlfw();
 	Program::_InitializeGlad();
+
+
+	float vertices[] = {
+		-1.0f, -1.0f, 0.0f, 1.0f,
+		 1.0f, -1.0f, 0.0f, 1.0f,
+		 0.0f,  1.0f, 0.0f, 1.0f,
+	};
+
+	GLuint vertexBufferObject;
+	glGenBuffers(1, &vertexBufferObject);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+
+	GLuint vertexShader   = Program::_CompileShader("shaders/shader.vert", GL_VERTEX_SHADER  );
+	GLuint fragmentShader = Program::_CompileShader("shaders/shader.frag", GL_FRAGMENT_SHADER);
+
+
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	GLint success;
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		GLchar infoLog[512];
+		GLsizei infoLength;
+		glGetProgramInfoLog(shaderProgram, 512 * sizeof(GLchar), &infoLength, infoLog);
+		std::cout << "Failed to link shader program";
+		if (infoLength > 512 * sizeof(GLchar)) {
+			std::cout << " (512/" << infoLength / sizeof(GLchar) << ")";
+		}
+		std::cout << std::endl << infoLog << std::endl;
+		throw std::exception("Failed to link shader program");
+	}
+
+	glUseProgram(shaderProgram);
+
+	// Shaders are now linked to the program and will not be used individually anymore.
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+}
+
+GLuint Program::_CompileShader(const char* filePath, GLenum glShaderType) {
+	std::ifstream shaderFile;
+	try {
+		shaderFile.open(filePath);
+	}
+	catch (std::exception e) {
+		std::cerr << "Unable to open shader file \"" << filePath << "\"" << std::endl << e.what() << std::endl;
+		throw e;
+	}
+
+	std::stringstream shaderStream;
+	shaderStream << shaderFile.rdbuf();
+	const std::string shaderCode = shaderStream.str();
+	const char* shaderCodeC = shaderCode.c_str();
+
+	GLuint shader = glCreateShader(glShaderType);
+	glShaderSource(shader, 1, &shaderCodeC, nullptr);
+	glCompileShader(shader);
+
+	GLint success;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		GLchar infoLog[512];
+		GLsizei infoLength;
+		glGetShaderInfoLog(shader, 512 * sizeof(GLchar), &infoLength, infoLog);
+		std::cout << "Failed to compile shader \"" << filePath << "\"";
+		if (infoLength > 512 * sizeof(GLchar)) {
+			std::cout << " (512/" << infoLength / sizeof(GLchar) << ")";
+		}
+		std::cout << std::endl << infoLog << std::endl;
+		throw std::exception("Failed to compile shader");
+	}
+	return shader;
 }
 
 void Program::Terminate() {

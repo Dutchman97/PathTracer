@@ -21,6 +21,7 @@ public:
 private:
 	static void _InitializeGlfw();
 	static void _InitializeGlad();
+	static GLuint _CompileShader(const char* filePath, const GLenum glShaderType);
 	
 	static void _FramebufferResizeCallback(GLFWwindow* window, int newWidth, int newHeight);
 	static void _KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod);
