@@ -7,6 +7,8 @@
 
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
+GLuint Program::_vertexArrayObject;
+GLuint Program::_shaderProgram;
 
 void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_windowWidth = windowWidth;
@@ -16,33 +18,20 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_InitializeGlad();
 
 
-	float vertices[] = {
-		-1.0f, -1.0f, 0.0f, 1.0f,
-		 1.0f, -1.0f, 0.0f, 1.0f,
-		 0.0f,  1.0f, 0.0f, 1.0f,
-	};
-
-	GLuint vertexBufferObject;
-	glGenBuffers(1, &vertexBufferObject);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-
 	GLuint vertexShader   = Program::_CompileShader("shaders/shader.vert", GL_VERTEX_SHADER  );
 	GLuint fragmentShader = Program::_CompileShader("shaders/shader.frag", GL_FRAGMENT_SHADER);
 
-
-	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
+	Program::_shaderProgram = glCreateProgram();
+	glAttachShader(Program::_shaderProgram, vertexShader);
+	glAttachShader(Program::_shaderProgram, fragmentShader);
+	glLinkProgram(Program::_shaderProgram);
 
 	GLint success;
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	glGetProgramiv(Program::_shaderProgram, GL_LINK_STATUS, &success);
 	if (!success) {
 		GLchar infoLog[512];
 		GLsizei infoLength;
-		glGetProgramInfoLog(shaderProgram, 512 * sizeof(GLchar), &infoLength, infoLog);
+		glGetProgramInfoLog(Program::_shaderProgram, 512 * sizeof(GLchar), &infoLength, infoLog);
 		std::cout << "Failed to link shader program";
 		if (infoLength > 512 * sizeof(GLchar)) {
 			std::cout << " (512/" << infoLength / sizeof(GLchar) << ")";
@@ -51,11 +40,29 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 		throw std::exception("Failed to link shader program");
 	}
 
-	glUseProgram(shaderProgram);
+	//glUseProgram(Program::_shaderProgram);
 
 	// Shaders are now linked to the program and will not be used individually anymore.
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
+
+
+	GLfloat vertices[] = {
+		-1.0f, -1.0f, 0.0f, 1.0f,
+		 1.0f, -1.0f, 0.0f, 1.0f,
+		 0.0f,  1.0f, 0.0f, 1.0f,
+	};
+
+	glGenVertexArrays(1, &Program::_vertexArrayObject);
+	glBindVertexArray(Program::_vertexArrayObject);
+
+	GLuint vertexBufferObject;
+	glGenBuffers(1, &vertexBufferObject);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+	glEnableVertexAttribArray(0);
 }
 
 GLuint Program::_CompileShader(const char* filePath, GLenum glShaderType) {
@@ -109,6 +116,10 @@ void Program::Draw() {
 	// Set the color to clear with and clear the color buffer.
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	glUseProgram(Program::_shaderProgram);
+	glBindVertexArray(Program::_vertexArrayObject);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glfwSwapBuffers(Program::_glfwWindow);
 }

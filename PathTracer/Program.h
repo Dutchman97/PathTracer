@@ -9,6 +9,9 @@ private:
 	static GLFWwindow* _glfwWindow;
 	static int _windowWidth, _windowHeight;
 
+	static GLuint _vertexArrayObject;
+	static GLuint _shaderProgram;
+
 
 	// Methods
 public:
