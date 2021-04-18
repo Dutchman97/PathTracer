@@ -48,10 +48,10 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 
 	GLfloat vertices[] = {
-		-0.9f, -0.9f, 0.0f, 1.0f,
-		-0.9f,  0.9f, 0.0f, 1.0f,
-		 0.9f,  0.9f, 0.0f, 1.0f,
-		 0.9f, -0.9f, 0.0f, 1.0f,
+		-0.9f, -0.9f, 0.0f, 1.0f, 0.0f, 0.0f,
+		-0.9f,  0.9f, 0.0f, 0.0f, 1.0f, 0.0f,
+		 0.9f,  0.9f, 0.0f, 0.0f, 0.0f, 1.0f,
+		 0.9f, -0.9f, 0.0f, 1.0f, 1.0f, 1.0f,
 	};
 	GLuint indices[] = {
 		0, 1, 2,
@@ -70,8 +70,10 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 }
 
 GLuint Program::_CompileShader(const char* filePath, GLenum glShaderType) {
