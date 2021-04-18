@@ -48,18 +48,27 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 
 	GLfloat vertices[] = {
-		-1.0f, -1.0f, 0.0f, 1.0f,
-		 1.0f, -1.0f, 0.0f, 1.0f,
-		 0.0f,  1.0f, 0.0f, 1.0f,
+		-0.9f, -0.9f, 0.0f, 1.0f,
+		-0.9f,  0.9f, 0.0f, 1.0f,
+		 0.9f,  0.9f, 0.0f, 1.0f,
+		 0.9f, -0.9f, 0.0f, 1.0f,
+	};
+	GLuint indices[] = {
+		0, 1, 2,
+		2, 3, 0,
 	};
 
 	glGenVertexArrays(1, &Program::_vertexArrayObject);
 	glBindVertexArray(Program::_vertexArrayObject);
 
-	GLuint vertexBufferObject;
+	GLuint vertexBufferObject, elementBufferObject;
 	glGenBuffers(1, &vertexBufferObject);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &elementBufferObject);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
 	glEnableVertexAttribArray(0);
@@ -119,7 +128,7 @@ void Program::Draw() {
 
 	glUseProgram(Program::_shaderProgram);
 	glBindVertexArray(Program::_vertexArrayObject);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 	glfwSwapBuffers(Program::_glfwWindow);
 }
