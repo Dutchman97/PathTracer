@@ -7,8 +7,10 @@
 
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
-GLuint Program::_vertexArrayObject;
+GLuint* Program::_vertexArrayObjects;
 GLuint Program::_shaderProgram;
+
+constexpr GLuint VAO_COUNT = 5;
 
 void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_windowWidth = windowWidth;
@@ -19,11 +21,13 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
-	Program::_CreateVertexArrayObjects(1, &Program::_vertexArrayObject);
+	Program::_vertexArrayObjects = (GLuint*)malloc(sizeof(GLuint) * VAO_COUNT);
+	Program::_CreateVertexArrayObjects(VAO_COUNT, Program::_vertexArrayObjects);
 }
 
 void Program::Terminate() {
 	glfwTerminate();
+	free(Program::_vertexArrayObjects);
 }
 
 bool Program::ShouldTerminate() {
@@ -39,8 +43,11 @@ void Program::Draw() {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	int second = (int)glfwGetTime();
+	int vaoIdx = second % VAO_COUNT;
+
 	glUseProgram(Program::_shaderProgram);
-	glBindVertexArray(Program::_vertexArrayObject);
+	glBindVertexArray(Program::_vertexArrayObjects[vaoIdx]);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 	glfwSwapBuffers(Program::_glfwWindow);
@@ -52,10 +59,12 @@ void Program::_CreateVertexArrayObjects(GLsizei count, GLuint* vertexArrayObject
 
 	// This works but can be further optimized.
 	for (GLsizei i = 0; i < count; i++) {
+
+		float col = (i + 1) / (float)count;
 		GLfloat vertices[] = {
-			-0.9f, -0.9f, 0.0f, 1.0f, 0.0f, 0.0f,
-			-0.9f,  0.9f, 0.0f, 0.0f, 1.0f, 0.0f,
-			 0.9f,  0.9f, 0.0f, 0.0f, 0.0f, 1.0f,
+			-0.9f, -0.9f, 0.0f,  col, 0.0f, 0.0f,
+			-0.9f,  0.9f, 0.0f, 0.0f,  col, 0.0f,
+			 0.9f,  0.9f, 0.0f, 0.0f, 0.0f,  col,
 			 0.9f, -0.9f, 0.0f, 1.0f, 1.0f, 1.0f,
 		};
 		GLuint indices[] = {
