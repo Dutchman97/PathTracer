@@ -148,9 +148,11 @@
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PathTracer.cpp" />
     <ClCompile Include="Program.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="PathTracer.h" />
     <ClInclude Include="Program.h" />
   </ItemGroup>
   <ItemGroup>

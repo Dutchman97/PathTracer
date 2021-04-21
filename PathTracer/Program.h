@@ -11,6 +11,7 @@ private:
 
 	static GLuint* _vertexArrayObjects;
 	static GLuint _shaderProgram;
+	static GLuint _texture;
 
 
 	// Methods
