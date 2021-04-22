@@ -13,7 +13,12 @@ Surface::Surface(const float x, const float y, const float width, const float he
 }
 
 Surface::~Surface() {
+	this->Release();
+}
 
+void Surface::Release() {
+	glDeleteTextures(1, &this->_texture);
+	glDeleteVertexArrays(1, &this->_vertexArrayObject);
 }
 
 /// <summary>
@@ -131,6 +136,8 @@ GLuint Surface::_CreateVertexArrayObject(const float x, const float y, const flo
 	glBindVertexArray(NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, NULL);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
+	GLuint buffers[2] { vertexBufferObject, elementBufferObject };
+	glDeleteBuffers(2, buffers);
 
 	return vertexArrayObject;
 }
