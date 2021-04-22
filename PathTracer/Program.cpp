@@ -7,11 +7,10 @@
 
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
-GLuint* Program::_vertexArrayObjects;
 GLuint Program::_shaderProgram;
-GLuint Program::_texture;
+Surface* Program::_surface;
 
-constexpr GLuint VAO_COUNT = 5;
+constexpr GLuint VAO_COUNT = 128;
 
 void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_windowWidth = windowWidth;
@@ -22,35 +21,11 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
-	Program::_vertexArrayObjects = (GLuint*)malloc(sizeof(GLuint) * VAO_COUNT);
-	Program::_CreateVertexArrayObjects(VAO_COUNT, Program::_vertexArrayObjects);
-
-
-	//GLuint texture;
-	glGenTextures(1, &Program::_texture);
-	glBindTexture(GL_TEXTURE_2D, Program::_texture);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	GLubyte* textureData = (GLubyte*)malloc(windowWidth * windowHeight * 3 * sizeof(GLubyte));
-	for (int y = 0; y < windowHeight; y++) {
-		for (int x = 0; x < windowWidth; x++) {
-			textureData[(x + y * windowWidth) * 3 + 0] = 255;
-			textureData[(x + y * windowWidth) * 3 + 1] = 127;
-			textureData[(x + y * windowWidth) * 3 + 2] = 127;
-		}
-	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, NULL, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-	glBindTexture(GL_TEXTURE_2D, NULL);
-	free(textureData);
+	Program::_surface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
 }
 
 void Program::Terminate() {
 	glfwTerminate();
-	free(Program::_vertexArrayObjects);
 }
 
 bool Program::ShouldTerminate() {
@@ -66,61 +41,13 @@ void Program::Draw() {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	int second = (int)glfwGetTime();
-	int vaoIdx = second % VAO_COUNT;
-
 	glUseProgram(Program::_shaderProgram);
-	glBindTexture(GL_TEXTURE_2D, Program::_texture);
-	glBindVertexArray(Program::_vertexArrayObjects[vaoIdx]);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+	Program::_surface->Draw();
 
 	glfwSwapBuffers(Program::_glfwWindow);
 }
 
 #pragma region Private methods
-void Program::_CreateVertexArrayObjects(GLsizei count, GLuint* vertexArrayObjects) {
-	glGenVertexArrays(count, vertexArrayObjects);
-
-	// This works but can be further optimized.
-	for (GLsizei i = 0; i < count; i++) {
-
-		float col = (i + 1) / (float)count;
-		GLfloat vertices[] = {
-			// Position        |  Color          |  UV
-			-0.9f, -0.9f, 0.0f,  col, 0.0f, 0.0f, 0.0f, 0.0f, // Bottom-left
-			-0.9f,  0.9f, 0.0f, 0.0f,  col, 0.0f, 1.0f, 0.0f, // Bottom-right
-			 0.9f,  0.9f, 0.0f, 0.0f, 0.0f,  col, 1.0f, 1.0f, // Top-right
-			 0.9f, -0.9f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Top-left
-		};
-		GLuint indices[] = {
-			0, 1, 2,
-			2, 3, 0,
-		};
-
-		glBindVertexArray(vertexArrayObjects[i]);
-
-		GLuint vertexBufferObject, elementBufferObject;
-		glGenBuffers(1, &vertexBufferObject);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-		glGenBuffers(1, &elementBufferObject);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)0);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-
-		glBindVertexArray(NULL);
-		glBindBuffer(GL_ARRAY_BUFFER, NULL);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
-	}
-}
-
 GLuint Program::_CreateShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath) {
 	GLuint vertexShader   = Program::_CompileShader(vertexShaderPath,   GL_VERTEX_SHADER  );
 	GLuint fragmentShader = Program::_CompileShader(fragmentShaderPath, GL_FRAGMENT_SHADER);

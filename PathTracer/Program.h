@@ -2,6 +2,8 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "PathTracer.h"
+#include "Surface.h"
 
 class Program {
 	// Properties
@@ -9,9 +11,11 @@ private:
 	static GLFWwindow* _glfwWindow;
 	static int _windowWidth, _windowHeight;
 
-	static GLuint* _vertexArrayObjects;
+	static PathTracer* _pathTracer;
+	static Surface* _surface;
+
 	static GLuint _shaderProgram;
-	static GLuint _texture;
+
 
 
 	// Methods
@@ -27,7 +31,6 @@ private:
 	static void _InitializeGlad();
 	static GLuint _CompileShader(const char* filePath, const GLenum glShaderType);
 	static GLuint _CreateShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath);
-	static void _CreateVertexArrayObjects(GLsizei count, GLuint* vertexArrayObjects);
 	
 	static void _FramebufferResizeCallback(GLFWwindow* window, int newWidth, int newHeight);
 	static void _KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod);
