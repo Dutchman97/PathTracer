@@ -4,6 +4,15 @@
 #include <math.h>
 #include <iostream>
 
+/// <summary>
+/// An OpenGL wrapper class representing a quad with a texture.
+/// </summary>
+/// <param name="x">The x-coordinate of the bottom-left corner of the surface, proportional to the window.</param>
+/// <param name="y">The y-coordinate of the bottom-left corner of the surface, proportional to the window.</param>
+/// <param name="width">The width of the surface, proportional to the window.</param>
+/// <param name="height">The height of the surface, proportional to the window.</param>
+/// <param name="windowPixelWidth">The width of the window in pixels.</param>
+/// <param name="windowPixelHeight">The height of the window in pixels.</param>
 Surface::Surface(const float x, const float y, const float width, const float height, const int windowPixelWidth, const int windowPixelHeight) {
 	this->_width = width;
 	this->_height = height;
@@ -12,13 +21,30 @@ Surface::Surface(const float x, const float y, const float width, const float he
 	this->_texture = this->_CreateTexture((int)roundf(width * windowPixelWidth), (int)roundf(height * windowPixelHeight));
 }
 
+/// <summary>
+/// Destroys this object and releases all OpenGL resources managed by this object.
+/// </summary>
 Surface::~Surface() {
 	this->Release();
 }
 
+/// <summary>
+/// Destroys all OpenGL resources managed by this object.
+/// </summary>
 void Surface::Release() {
 	glDeleteTextures(1, &this->_texture);
 	glDeleteVertexArrays(1, &this->_vertexArrayObject);
+}
+
+/// <summary>
+/// Resizes the surface's texture so that it fits exactly in the same region of the resized window again.
+/// The size of the surface itself is proportional to the window, and as such does not need resizing.
+/// Call this method whenever the window gets resized.
+/// </summary>
+/// <param name="windowPixelWidth">The new width of the window.</param>
+/// <param name="windowPixelHeight">The new height of the window.</param>
+void Surface::Resize(const int windowPixelWidth, const int windowPixelHeight) {
+	this->_SetTextureData(this->_texture, (int)roundf(this->_width * windowPixelWidth), (int)roundf(this->_height * windowPixelHeight));
 }
 
 /// <summary>
@@ -51,31 +77,36 @@ GLuint Surface::_CreateTexture(const int pixelWidth, const int pixelHeight) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+	this->_SetTextureData(texture, pixelWidth, pixelHeight);
+
+	// Clean up.
+	glBindTexture(GL_TEXTURE_2D, NULL);
+
+	return texture;
+}
+
+/// <summary>
+/// Sets the texture's data to be fully white and in the given dimensions.
+/// </summary>
+/// <param name="texture">The OpenGL texture ID of the texture.</param>
+/// <param name="pixelWidth">The width of the texture.</param>
+/// <param name="pixelHeight">The height of the texture.</param>
+void Surface::_SetTextureData(const GLuint texture, const int pixelWidth, const int pixelHeight) {
 	// Assign memory for the color data of the texture.
 	GLubyte* textureData = (GLubyte*)_aligned_malloc(pixelWidth * pixelHeight * 4 * sizeof(GLubyte), 4);
 	if (!textureData) {
 		throw std::exception("Unable to assign memory for texture data.");
 	}
 
-	// Set all pixels to white.
-#pragma warning (disable : 6386)
-	for (int i = 0; i < pixelWidth * pixelHeight; i++) {
-		textureData[i * 4 + 0] = 255;
-		textureData[i * 4 + 1] = 255; // This line gives a C6386 warning for some reason?
-		textureData[i * 4 + 2] = 255;
-		textureData[i * 4 + 3] = 255;
+	// Set all pixels to white (all RGBA values to 255).
+	for (int i = 0; i < pixelWidth * pixelHeight * 4; i++) {
+		textureData[i] = 255;
 	}
-#pragma warning (default : 6386)
 
 	// Set the texture's data.
 	// https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, pixelWidth, pixelHeight, NULL, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
-
-	// Clean up.
-	glBindTexture(GL_TEXTURE_2D, NULL);
 	_aligned_free(textureData);
-
-	return texture;
 }
 
 /// <summary>

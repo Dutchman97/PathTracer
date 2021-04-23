@@ -12,7 +12,7 @@ private:
 	static int _windowWidth, _windowHeight;
 
 	static PathTracer* _pathTracer;
-	static Surface* _surface;
+	static Surface* _mainSurface;
 
 	static GLuint _shaderProgram;
 

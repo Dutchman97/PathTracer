@@ -8,7 +8,8 @@
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
 GLuint Program::_shaderProgram;
-Surface* Program::_surface;
+PathTracer* Program::_pathTracer;
+Surface* Program::_mainSurface;
 
 constexpr GLuint VAO_COUNT = 128;
 
@@ -21,10 +22,13 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
-	Program::_surface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
+	Program::_mainSurface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
+	Program::_pathTracer = new PathTracer(Program::_mainSurface->GetTexture(), windowWidth, windowHeight);
 }
 
 void Program::Terminate() {
+	delete Program::_pathTracer;
+	delete Program::_mainSurface;
 	glfwTerminate();
 }
 
@@ -41,9 +45,12 @@ void Program::Draw() {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	// Draw all objects.
 	glUseProgram(Program::_shaderProgram);
-	Program::_surface->Draw();
+	Program::_pathTracer->Draw();
+	Program::_mainSurface->Draw();
 
+	// Swap the back and front buffers.
 	glfwSwapBuffers(Program::_glfwWindow);
 }
 
@@ -154,6 +161,9 @@ void Program::_FramebufferResizeCallback(GLFWwindow* window, int newWidth, int n
 	Program::_windowWidth = newWidth;
 	Program::_windowHeight = newHeight;
 	glViewport(0, 0, newWidth, newHeight);
+
+	Program::_mainSurface->Resize(newWidth, newHeight);
+	Program::_pathTracer->Resize(newWidth, newHeight);
 }
 
 /// <summary>
