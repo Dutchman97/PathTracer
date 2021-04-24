@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "PathTracer.h"
+#include <IPathTracer.h>
 #include "Surface.h"
 
 class Program {
@@ -11,7 +11,7 @@ private:
 	static GLFWwindow* _glfwWindow;
 	static int _windowWidth, _windowHeight;
 
-	static PathTracer* _pathTracer;
+	static IPathTracer* _pathTracer;
 	static Surface* _mainSurface;
 
 	static GLuint _shaderProgram;

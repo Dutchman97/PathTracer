@@ -4,11 +4,12 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <IPathTracerManagement.h>
 
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
 GLuint Program::_shaderProgram;
-PathTracer* Program::_pathTracer;
+IPathTracer* Program::_pathTracer;
 Surface* Program::_mainSurface;
 
 constexpr GLuint VAO_COUNT = 128;
@@ -23,11 +24,11 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
 	Program::_mainSurface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
-	Program::_pathTracer = new PathTracer(Program::_mainSurface->GetTexture(), windowWidth, windowHeight);
+	//Program::_pathTracer = new PathTracer(Program::_mainSurface->GetTexture(), windowWidth, windowHeight);
 }
 
 void Program::Terminate() {
-	delete Program::_pathTracer;
+	//delete Program::_pathTracer;
 	delete Program::_mainSurface;
 	glfwTerminate();
 }
@@ -47,7 +48,7 @@ void Program::Draw() {
 
 	// Draw all objects.
 	glUseProgram(Program::_shaderProgram);
-	Program::_pathTracer->Draw();
+	//Program::_pathTracer->Draw();
 	Program::_mainSurface->Draw();
 
 	// Swap the back and front buffers.
@@ -163,7 +164,7 @@ void Program::_FramebufferResizeCallback(GLFWwindow* window, int newWidth, int n
 	glViewport(0, 0, newWidth, newHeight);
 
 	Program::_mainSurface->Resize(newWidth, newHeight);
-	Program::_pathTracer->Resize(newWidth, newHeight);
+	//Program::_pathTracer->Resize(newWidth, newHeight);
 }
 
 /// <summary>
@@ -177,6 +178,29 @@ void Program::_FramebufferResizeCallback(GLFWwindow* window, int newWidth, int n
 void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod) {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(Program::_glfwWindow, true);
+	}
+	else if (key == GLFW_KEY_0 && action == GLFW_PRESS) {
+		CreatePathTracerFunc CreatePathTracer;
+		DestroyPathTracerFunc DestroyPathTracer;
+		bool loadLibrarySuccess = LoadPathTracerLibrary("PT_CudaSimple", &CreatePathTracer, &DestroyPathTracer);
+
+		if (loadLibrarySuccess) {
+			std::cout << "Loaded library PT_CudaSimple" << std::endl;
+			Program::_pathTracer = CreatePathTracer(Program::_mainSurface->GetTexture(), Program::_windowWidth, Program::_windowHeight);
+		}
+		else {
+			std::cout << "Could not load library PT_CudaSimple" << std::endl;
+		}
+	}
+	else if (key == GLFW_KEY_9 && action == GLFW_PRESS) {
+		bool unloadLibrarySuccess = UnloadPathTracerLibrary("PT_CudaSimple");
+
+		if (unloadLibrarySuccess) {
+			std::cout << "Unloaded library PT_CudaSimple" << std::endl;
+		}
+		else {
+			std::cout << "Could not unload library PT_CudaSimple" << std::endl;
+		}
 	}
 }
 #pragma endregion

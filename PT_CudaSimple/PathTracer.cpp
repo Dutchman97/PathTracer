@@ -1,7 +1,11 @@
 #include "PathTracer.h"
 
-PathTracer::PathTracer(GLuint texture, const int pixelWidth, const int pixelHeight) {
-	this->_texture = texture;
+PathTracer::PathTracer() {
+
+}
+
+PathTracer::~PathTracer() {
+	
 }
 
 void PathTracer::Update() {
