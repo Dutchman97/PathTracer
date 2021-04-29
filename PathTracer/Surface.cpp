@@ -105,7 +105,7 @@ void Surface::_SetTextureData(const GLuint texture, const int pixelWidth, const 
 
 	// Set the texture's data.
 	// https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, pixelWidth, pixelHeight, NULL, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, pixelWidth, pixelHeight, NULL, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
 	_aligned_free(textureData);
 }
 

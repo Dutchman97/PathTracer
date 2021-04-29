@@ -156,12 +156,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="PathTracer.h" />
+    <ClInclude Include="PathTracer.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="glad.c" />
-    <ClCompile Include="PathTracer.cpp" />
+    <ClCompile Include="PathTracer.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="kernels.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
