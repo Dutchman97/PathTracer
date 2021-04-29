@@ -10,8 +10,9 @@ class Program {
 private:
 	static GLFWwindow* _glfwWindow;
 	static int _windowWidth, _windowHeight;
-
+	
 	static IPathTracer* _pathTracer;
+	static DestroyPathTracerFunc _DestroyPathTracer;
 	static Surface* _mainSurface;
 
 	static GLuint _shaderProgram;

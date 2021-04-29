@@ -4,9 +4,6 @@
 #include <cstdlib>
 #include <iostream>
 
-typedef IPathTracer* (*CreatePathTracerFunc)(const unsigned int glTexture, const int pixelWidth, const int pixelHeight);
-typedef void (*DestroyPathTracerFunc)(IPathTracer*);
-
 #define DLL_FAIL(desc, libraryName) { DWORD errorCode = GetLastError(); std::cout << desc << " (library '" << libraryName << "', error '" << errorCode << "')" << std::endl; return false; }
 
 bool LoadPathTracerLibrary(const char* libraryName, CreatePathTracerFunc* createFuncPtr, DestroyPathTracerFunc* destroyFuncPtr) {

@@ -11,6 +11,7 @@ int Program::_windowWidth, Program::_windowHeight;
 GLuint Program::_shaderProgram;
 IPathTracer* Program::_pathTracer;
 Surface* Program::_mainSurface;
+DestroyPathTracerFunc Program::_DestroyPathTracer;
 
 constexpr GLuint VAO_COUNT = 128;
 
@@ -48,7 +49,9 @@ void Program::Draw() {
 
 	// Draw all objects.
 	glUseProgram(Program::_shaderProgram);
-	//Program::_pathTracer->Draw();
+	if (Program::_pathTracer != nullptr) {
+		Program::_pathTracer->Draw();
+	}
 	Program::_mainSurface->Draw();
 
 	// Swap the back and front buffers.
@@ -176,30 +179,36 @@ void Program::_FramebufferResizeCallback(GLFWwindow* window, int newWidth, int n
 /// <param name="action">GLFW_PRESS, GLFW_RELEASE, or GLFW_REPEAT.</param>
 /// <param name="mod">Bit field describing which modifier keys were held down.</param>
 void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod) {
+#define DLL_PROJECT "PT_CudaSimple"
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(Program::_glfwWindow, true);
 	}
 	else if (key == GLFW_KEY_0 && action == GLFW_PRESS) {
 		CreatePathTracerFunc CreatePathTracer;
 		DestroyPathTracerFunc DestroyPathTracer;
-		bool loadLibrarySuccess = LoadPathTracerLibrary("PT_CudaSimple", &CreatePathTracer, &DestroyPathTracer);
+		bool loadLibrarySuccess = LoadPathTracerLibrary(DLL_PROJECT, &CreatePathTracer, &DestroyPathTracer);
 
 		if (loadLibrarySuccess) {
-			std::cout << "Loaded library PT_CudaSimple" << std::endl;
+			std::cout << "Loaded library " << DLL_PROJECT << std::endl;
 			Program::_pathTracer = CreatePathTracer(Program::_mainSurface->GetTexture(), Program::_windowWidth, Program::_windowHeight);
+			Program::_DestroyPathTracer = DestroyPathTracer;
 		}
 		else {
-			std::cout << "Could not load library PT_CudaSimple" << std::endl;
+			std::cout << "Could not load library " << DLL_PROJECT << std::endl;
 		}
 	}
 	else if (key == GLFW_KEY_9 && action == GLFW_PRESS) {
-		bool unloadLibrarySuccess = UnloadPathTracerLibrary("PT_CudaSimple");
+		if (Program::_pathTracer != nullptr) {
+			Program::_DestroyPathTracer(Program::_pathTracer);
+			Program::_pathTracer = nullptr;
+		}
+		bool unloadLibrarySuccess = UnloadPathTracerLibrary(DLL_PROJECT);
 
 		if (unloadLibrarySuccess) {
-			std::cout << "Unloaded library PT_CudaSimple" << std::endl;
+			std::cout << "Unloaded library " << DLL_PROJECT << std::endl;
 		}
 		else {
-			std::cout << "Could not unload library PT_CudaSimple" << std::endl;
+			std::cout << "Could not unload library " << DLL_PROJECT << std::endl;
 		}
 	}
 }
