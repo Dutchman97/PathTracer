@@ -55,6 +55,8 @@ void Surface::Draw() {
 	glBindTexture(GL_TEXTURE_2D, this->_texture);
 	glBindVertexArray(this->_vertexArrayObject);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+	glBindVertexArray(NULL);
+	glBindTexture(GL_TEXTURE_2D, NULL);
 }
 
 #pragma region Private methods
@@ -92,6 +94,7 @@ GLuint Surface::_CreateTexture(const int pixelWidth, const int pixelHeight) {
 /// <param name="pixelWidth">The width of the texture.</param>
 /// <param name="pixelHeight">The height of the texture.</param>
 void Surface::_SetTextureData(const GLuint texture, const int pixelWidth, const int pixelHeight) {
+	std::cout << "Resizing texture to " << pixelWidth << "x" << pixelHeight << std::endl;
 	// Assign memory for the color data of the texture.
 	GLubyte* textureData = (GLubyte*)_aligned_malloc(pixelWidth * pixelHeight * 4 * sizeof(GLubyte), 4);
 	if (!textureData) {
@@ -105,7 +108,7 @@ void Surface::_SetTextureData(const GLuint texture, const int pixelWidth, const 
 
 	// Set the texture's data.
 	// https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, pixelWidth, pixelHeight, NULL, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, pixelWidth, pixelHeight, NULL, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
 	_aligned_free(textureData);
 }
 
@@ -134,9 +137,9 @@ GLuint Surface::_CreateVertexArrayObject(const float x, const float y, const flo
 
 	// Vertices of the surface (position, color, UV).
 	Surface::Vertex vertices[] = {
-		Vertex { bottomLeft  * 2.0f - 1.0f, glm::vec3(1.0f, 0.0f, 0.0f), uvBottomLeft  },
-		Vertex { bottomRight * 2.0f - 1.0f, glm::vec3(0.0f, 1.0f, 0.0f), uvBottomRight },
-		Vertex { topRight    * 2.0f - 1.0f, glm::vec3(0.0f, 0.0f, 1.0f), uvTopRight    },
+		Vertex { bottomLeft  * 2.0f - 1.0f, glm::vec3(1.0f, 1.0f, 1.0f), uvBottomLeft  },
+		Vertex { bottomRight * 2.0f - 1.0f, glm::vec3(1.0f, 1.0f, 1.0f), uvBottomRight },
+		Vertex { topRight    * 2.0f - 1.0f, glm::vec3(1.0f, 1.0f, 1.0f), uvTopRight    },
 		Vertex { topLeft     * 2.0f - 1.0f, glm::vec3(1.0f, 1.0f, 1.0f), uvTopLeft     },
 	};
 	GLuint indices[] = {

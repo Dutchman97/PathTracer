@@ -18,7 +18,7 @@ public:
 	void Resize(const int pixelWidth, const int pixelHeight);
 	~PathTracer();
 private:
-	static void _CheckCudaError(const cudaError_t cudaStatus, const char* functionName);
+	inline static void _CheckCudaError(const cudaError_t cudaStatus, const char* functionName);
 };
 
 typedef unsigned int uint;

@@ -42,13 +42,20 @@ void PathTracer::Draw() {
 	_CheckCudaError(cudaStatus, "cudaGraphicsResourceGetMappedPointer");
 
 	cudaSurfaceObject_t surface;
-	cudaResourceDesc resourceDesc;
+	cudaResourceDesc resourceDesc = cudaResourceDesc();
 	resourceDesc.resType = cudaResourceType::cudaResourceTypeArray;
 	resourceDesc.res.array.array = abcdef;
 	cudaStatus = cudaCreateSurfaceObject(&surface, &resourceDesc);
 	_CheckCudaError(cudaStatus, "cudaCreateSurfaceObject");
 
-	DrawToTexture<<<16, 16>>>(surface, this->_width, this->_height);
+	dim3 threadsPerBlock(16, 16);
+	DrawToTexture<<<1, threadsPerBlock>>>(surface);
+
+	cudaStatus = cudaGetLastError();
+	_CheckCudaError(cudaStatus, "cudaGetLastError");
+
+	cudaStatus = cudaDeviceSynchronize();
+	_CheckCudaError(cudaStatus, "cudaDeviceSynchronize");
 
 	cudaStatus = cudaDestroySurfaceObject(surface);
 	_CheckCudaError(cudaStatus, "cudaDestroySurfaceObject");
@@ -61,7 +68,7 @@ void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
 
 }
 
-void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char* functionName) {
+inline void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char* functionName) {
 	if (cudaStatus != cudaError::cudaSuccess) {
 		std::cout << "Failed to execute '" << functionName << "' (error " << cudaStatus << ")" << std::endl;
 		throw std::exception();
