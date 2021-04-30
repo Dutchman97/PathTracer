@@ -9,6 +9,7 @@ class PathTracer : public IPathTracer {
 private:
 	cudaGraphicsResource_t _cudaTexture;
 	int _width, _height;
+	GLuint _glTexture;
 
 	// Methods
 public:

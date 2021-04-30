@@ -4,7 +4,7 @@
 
 #include "kernels.cuh"
 
-PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight) {
+PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture) {
 	cudaError_t cudaStatus;
 
 	uint cudaDeviceCount;
@@ -16,9 +16,6 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 
 	cudaStatus = cudaSetDevice(cudaDevices[0]);
 	_CheckCudaError(cudaStatus, "cudaSetDevice");
-	
-	cudaStatus = cudaGraphicsGLRegisterImage(&this->_cudaTexture, glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
-	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
 }
 
 PathTracer::~PathTracer() {
@@ -32,8 +29,10 @@ void PathTracer::Update() {
 }
 
 void PathTracer::Draw() {
-	std::cout << "Drawing CudaTest path tracer" << std::endl;
 	cudaError_t cudaStatus;
+	cudaStatus = cudaGraphicsGLRegisterImage(&this->_cudaTexture, this->_glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
+	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
+
 	cudaStatus = cudaGraphicsMapResources(1, &this->_cudaTexture);
 	_CheckCudaError(cudaStatus, "cudaGraphicsMapResources");
 
@@ -62,6 +61,9 @@ void PathTracer::Draw() {
 
 	cudaStatus = cudaGraphicsUnmapResources(1, &this->_cudaTexture);
 	_CheckCudaError(cudaStatus, "cudaGraphicsUnmapResources");
+
+	cudaStatus = cudaGraphicsUnregisterResource(this->_cudaTexture);
+	_CheckCudaError(cudaStatus, "cudaGraphicsUnregisterResource");
 }
 
 void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {

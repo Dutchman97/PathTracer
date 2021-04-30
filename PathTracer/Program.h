@@ -35,5 +35,6 @@ private:
 	
 	static void _FramebufferResizeCallback(GLFWwindow* window, int newWidth, int newHeight);
 	static void _KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod);
+	static void GLAPIENTRY _MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 };
 

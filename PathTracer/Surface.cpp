@@ -44,7 +44,10 @@ void Surface::Release() {
 /// <param name="windowPixelWidth">The new width of the window.</param>
 /// <param name="windowPixelHeight">The new height of the window.</param>
 void Surface::Resize(const int windowPixelWidth, const int windowPixelHeight) {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, this->_texture);
 	this->_SetTextureData(this->_texture, (int)roundf(this->_width * windowPixelWidth), (int)roundf(this->_height * windowPixelHeight));
+	glBindTexture(GL_TEXTURE_2D, NULL);
 }
 
 /// <summary>
@@ -94,7 +97,6 @@ GLuint Surface::_CreateTexture(const int pixelWidth, const int pixelHeight) {
 /// <param name="pixelWidth">The width of the texture.</param>
 /// <param name="pixelHeight">The height of the texture.</param>
 void Surface::_SetTextureData(const GLuint texture, const int pixelWidth, const int pixelHeight) {
-	std::cout << "Resizing texture to " << pixelWidth << "x" << pixelHeight << std::endl;
 	// Assign memory for the color data of the texture.
 	GLubyte* textureData = (GLubyte*)_aligned_malloc(pixelWidth * pixelHeight * 4 * sizeof(GLubyte), 4);
 	if (!textureData) {

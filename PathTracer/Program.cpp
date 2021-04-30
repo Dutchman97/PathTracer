@@ -22,6 +22,9 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_InitializeGlfw();
 	Program::_InitializeGlad();
 
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(Program::_MessageCallback, 0);
+
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
 	Program::_mainSurface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
@@ -166,8 +169,10 @@ void Program::_FramebufferResizeCallback(GLFWwindow* window, int newWidth, int n
 	Program::_windowHeight = newHeight;
 	glViewport(0, 0, newWidth, newHeight);
 
+	if (Program::_pathTracer != nullptr) {
+		Program::_pathTracer->Resize(newWidth, newHeight);
+	}
 	Program::_mainSurface->Resize(newWidth, newHeight);
-	//Program::_pathTracer->Resize(newWidth, newHeight);
 }
 
 /// <summary>
@@ -211,5 +216,78 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 			std::cout << "Could not unload library " << DLL_PROJECT << std::endl;
 		}
 	}
+}
+
+void GLAPIENTRY Program::_MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+	std::string sourceStr;
+	switch (source) {
+	case GL_DEBUG_SOURCE_API:
+		sourceStr = "OpenGL API call";
+		break;
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+		sourceStr = "window-system API";
+		break;
+	case GL_DEBUG_SOURCE_SHADER_COMPILER:
+		sourceStr = "shader compiler";
+		break;
+	case GL_DEBUG_SOURCE_THIRD_PARTY:
+		sourceStr = "third-party application";
+		break;
+	case GL_DEBUG_SOURCE_APPLICATION:
+		sourceStr = "user-generated";
+		break;
+	case GL_DEBUG_SOURCE_OTHER:
+		sourceStr = "unknown source";
+		break;
+	}
+
+	std::string typeStr;
+	switch (type) {
+	case GL_DEBUG_TYPE_ERROR:
+		typeStr = "error";
+		break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		typeStr = "deprecated behavior";
+		break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		typeStr = "undefined behavior";
+		break;
+	case GL_DEBUG_TYPE_PORTABILITY:
+		typeStr = "not portable";
+		break;
+	case GL_DEBUG_TYPE_PERFORMANCE:
+		typeStr = "performance issue";
+		break;
+	case GL_DEBUG_TYPE_MARKER:
+		typeStr = "marker";
+		break;
+	case GL_DEBUG_TYPE_PUSH_GROUP:
+		typeStr = "push to group";
+		break;
+	case GL_DEBUG_TYPE_POP_GROUP:
+		typeStr = "pop from group";
+		break;
+	case GL_DEBUG_TYPE_OTHER:
+		typeStr = "unknown type";
+	}
+
+	std::string severityStr;
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_HIGH:
+		severityStr = "HIGH";
+		break;
+	case GL_DEBUG_SEVERITY_MEDIUM:
+		severityStr = "MEDIUM";
+		break;
+	case GL_DEBUG_SEVERITY_LOW:
+		severityStr = "LOW";
+		break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION:
+		severityStr = "INFO";
+		break;
+	}
+
+	fprintf(stderr, "GL CALLBACK (%s): source: '%s', type: '%s' - message:\n\t%s\n",
+		severityStr.c_str(), sourceStr.c_str(), typeStr.c_str(), message);
 }
 #pragma endregion
