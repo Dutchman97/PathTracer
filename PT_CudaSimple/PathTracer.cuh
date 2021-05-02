@@ -28,8 +28,9 @@ public:
 	~PathTracer();
 private:
 	inline static void _CheckCudaError(const cudaError_t cudaStatus, const char* functionName);
-	void _MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr);
-	void _UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr);
+	void _MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
+	void _UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
+	void _PrintDeviceInfo(const int device) const;
 };
 
 typedef unsigned int uint;

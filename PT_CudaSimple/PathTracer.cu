@@ -12,7 +12,9 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 	cudaStatus = cudaGLGetDevices(&cudaDeviceCount, cudaDevices, 4, cudaGLDeviceList::cudaGLDeviceListAll);
 	_CheckCudaError(cudaStatus, "cudaGLGetDevices");
 
-	std::cout << "Found " << cudaDeviceCount << " CUDA-capable devices, using first device (device " << cudaDevices[0] << ")" << std::endl;
+	std::cout << "Found " << cudaDeviceCount << " CUDA-capable devices linked to the current OpenGL context, using first device (device " << cudaDevices[0] << ")" << std::endl;
+
+	this->_PrintDeviceInfo(cudaDevices[0]);
 
 	cudaStatus = cudaSetDevice(cudaDevices[0]);
 	_CheckCudaError(cudaStatus, "cudaSetDevice");
@@ -73,12 +75,13 @@ void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
 
 inline void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char* functionName) {
 	if (cudaStatus != cudaError::cudaSuccess) {
-		std::cout << "Failed to execute '" << functionName << "' (error " << cudaStatus << ")" << std::endl;
+		std::cout << "Failed to execute '" << functionName << "' (" << cudaGetErrorName(cudaStatus) << ")" << std::endl <<
+			"\t" << cudaGetErrorString(cudaStatus) << std::endl;
 		throw std::exception();
 	}
 }
 
-void PathTracer::_MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) {
+void PathTracer::_MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const {
 	cudaError_t cudaStatus;
 	cudaStatus = cudaGraphicsGLRegisterImage(cudaResourcePtr, glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
 	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
@@ -97,7 +100,7 @@ void PathTracer::_MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cud
 	_CheckCudaError(cudaStatus, "cudaCreateSurfaceObject");
 }
 
-void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) {
+void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const {
 	cudaError_t cudaStatus;
 	cudaStatus = cudaDestroySurfaceObject(*cudaSurfacePtr);
 	_CheckCudaError(cudaStatus, "cudaDestroySurfaceObject");
@@ -107,4 +110,17 @@ void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurf
 
 	cudaStatus = cudaGraphicsUnregisterResource(*cudaResourcePtr);
 	_CheckCudaError(cudaStatus, "cudaGraphicsUnregisterResource");
+}
+
+void PathTracer::_PrintDeviceInfo(const int device) const {
+	cudaError_t cudaStatus;
+	cudaDeviceProp properties;
+	cudaStatus = cudaGetDeviceProperties(&properties, device);
+	_CheckCudaError(cudaStatus, "cudaGetDeviceProperties");
+
+	std::printf("Using '%s'\n", properties.name);
+	std::printf("\tCompute capability:      %i.%i\n", properties.major, properties.minor);
+	std::printf("\tMultiprocessors:         %i\n", properties.multiProcessorCount);
+	std::printf("\tWarp size:               %i\n", properties.warpSize);
+	std::printf("\tConcurrent engine count: %i\n", properties.asyncEngineCount);
 }
