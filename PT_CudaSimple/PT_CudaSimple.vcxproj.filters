@@ -23,6 +23,9 @@
     <ClInclude Include="PathTracer.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Structures.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

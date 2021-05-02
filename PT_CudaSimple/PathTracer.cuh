@@ -11,15 +11,25 @@ private:
 	int _width, _height;
 	GLuint _glTexture;
 
+	enum DrawState { Idle, Drawing };
+	struct DrawingVariables {
+		DrawState drawState = DrawState::Idle;
+		cudaGraphicsResource_t cudaTextureResource;
+		cudaSurfaceObject_t cudaSurface;
+	} _drawingVariables;
+
 	// Methods
 public:
 	PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight);
 	void Update();
-	void Draw();
+	void BeginDrawing();
+	void FinalizeDrawing();
 	void Resize(const int pixelWidth, const int pixelHeight);
 	~PathTracer();
 private:
 	inline static void _CheckCudaError(const cudaError_t cudaStatus, const char* functionName);
+	void _MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr);
+	void _UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr);
 };
 
 typedef unsigned int uint;

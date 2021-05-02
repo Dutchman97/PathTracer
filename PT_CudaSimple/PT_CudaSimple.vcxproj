@@ -97,6 +97,7 @@
   <ItemGroup>
     <ClInclude Include="kernels.cuh" />
     <ClInclude Include="PathTracer.cuh" />
+    <ClInclude Include="Structures.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

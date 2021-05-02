@@ -19,7 +19,12 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 }
 
 PathTracer::~PathTracer() {
-	std::cout << "Resetting CUDA device" << std::endl;
+	std::cout << "Terminating CUDA path tracer" << std::endl;
+
+	if (this->_drawingVariables.drawState == DrawState::Drawing) {
+		this->FinalizeDrawing();
+	}
+
 	cudaError_t cudaStatus = cudaDeviceReset();
 	_CheckCudaError(cudaStatus, "cudaDeviceReset");
 }
@@ -28,42 +33,38 @@ void PathTracer::Update() {
 
 }
 
-void PathTracer::Draw() {
+void PathTracer::BeginDrawing() {
 	cudaError_t cudaStatus;
-	cudaStatus = cudaGraphicsGLRegisterImage(&this->_cudaTexture, this->_glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
-	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
+	this->_drawingVariables = DrawingVariables();
+	this->_drawingVariables.drawState = DrawState::Drawing;
 
-	cudaStatus = cudaGraphicsMapResources(1, &this->_cudaTexture);
-	_CheckCudaError(cudaStatus, "cudaGraphicsMapResources");
-
-	cudaArray_t abcdef;
-	cudaStatus = cudaGraphicsSubResourceGetMappedArray(&abcdef, this->_cudaTexture, 0, 0);
-	_CheckCudaError(cudaStatus, "cudaGraphicsResourceGetMappedPointer");
-
-	cudaSurfaceObject_t surface;
-	cudaResourceDesc resourceDesc = cudaResourceDesc();
-	resourceDesc.resType = cudaResourceType::cudaResourceTypeArray;
-	resourceDesc.res.array.array = abcdef;
-	cudaStatus = cudaCreateSurfaceObject(&surface, &resourceDesc);
-	_CheckCudaError(cudaStatus, "cudaCreateSurfaceObject");
+	this->_MapTexture(
+		this->_glTexture,
+		&this->_drawingVariables.cudaTextureResource,
+		&this->_drawingVariables.cudaSurface
+	);
 
 	dim3 threadsPerBlock(16, 16);
-	DrawToTexture<<<1, threadsPerBlock>>>(surface);
+	DrawToTexture<<<1, threadsPerBlock>>>(this->_drawingVariables.cudaSurface);
 
 	cudaStatus = cudaGetLastError();
 	_CheckCudaError(cudaStatus, "cudaGetLastError");
+}
 
+void PathTracer::FinalizeDrawing() {
+	if (this->_drawingVariables.drawState != DrawState::Drawing) {
+		return;
+	}
+	this->_drawingVariables.drawState = DrawState::Idle;
+
+	cudaError_t cudaStatus;
 	cudaStatus = cudaDeviceSynchronize();
 	_CheckCudaError(cudaStatus, "cudaDeviceSynchronize");
 
-	cudaStatus = cudaDestroySurfaceObject(surface);
-	_CheckCudaError(cudaStatus, "cudaDestroySurfaceObject");
-
-	cudaStatus = cudaGraphicsUnmapResources(1, &this->_cudaTexture);
-	_CheckCudaError(cudaStatus, "cudaGraphicsUnmapResources");
-
-	cudaStatus = cudaGraphicsUnregisterResource(this->_cudaTexture);
-	_CheckCudaError(cudaStatus, "cudaGraphicsUnregisterResource");
+	this->_UnmapTexture(
+		&this->_drawingVariables.cudaTextureResource,
+		&this->_drawingVariables.cudaSurface
+	);
 }
 
 void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
@@ -75,4 +76,35 @@ inline void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char
 		std::cout << "Failed to execute '" << functionName << "' (error " << cudaStatus << ")" << std::endl;
 		throw std::exception();
 	}
+}
+
+void PathTracer::_MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) {
+	cudaError_t cudaStatus;
+	cudaStatus = cudaGraphicsGLRegisterImage(cudaResourcePtr, glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
+	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
+
+	cudaStatus = cudaGraphicsMapResources(1, cudaResourcePtr);
+	_CheckCudaError(cudaStatus, "cudaGraphicsMapResources");
+
+	cudaArray_t abcdef;
+	cudaStatus = cudaGraphicsSubResourceGetMappedArray(&abcdef, *cudaResourcePtr, 0, 0);
+	_CheckCudaError(cudaStatus, "cudaGraphicsResourceGetMappedPointer");
+
+	cudaResourceDesc resourceDesc = cudaResourceDesc();
+	resourceDesc.resType = cudaResourceType::cudaResourceTypeArray;
+	resourceDesc.res.array.array = abcdef;
+	cudaStatus = cudaCreateSurfaceObject(cudaSurfacePtr, &resourceDesc);
+	_CheckCudaError(cudaStatus, "cudaCreateSurfaceObject");
+}
+
+void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) {
+	cudaError_t cudaStatus;
+	cudaStatus = cudaDestroySurfaceObject(*cudaSurfacePtr);
+	_CheckCudaError(cudaStatus, "cudaDestroySurfaceObject");
+
+	cudaStatus = cudaGraphicsUnmapResources(1, cudaResourcePtr);
+	_CheckCudaError(cudaStatus, "cudaGraphicsUnmapResources");
+
+	cudaStatus = cudaGraphicsUnregisterResource(*cudaResourcePtr);
+	_CheckCudaError(cudaStatus, "cudaGraphicsUnregisterResource");
 }

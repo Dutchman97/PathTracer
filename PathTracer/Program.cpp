@@ -43,6 +43,13 @@ bool Program::ShouldTerminate() {
 
 void Program::Update() {
 	glfwPollEvents();
+	if (Program::_pathTracer != nullptr) {
+		// Can't put this before polling events as that's when
+		// the window resizing callback function gets called
+		// and thus also recreating the OpenGL texture.
+		Program::_pathTracer->BeginDrawing();
+		Program::_pathTracer->Update();
+	}
 }
 
 void Program::Draw() {
@@ -53,7 +60,7 @@ void Program::Draw() {
 	// Draw all objects.
 	glUseProgram(Program::_shaderProgram);
 	if (Program::_pathTracer != nullptr) {
-		Program::_pathTracer->Draw();
+		Program::_pathTracer->FinalizeDrawing();
 	}
 	Program::_mainSurface->Draw();
 
