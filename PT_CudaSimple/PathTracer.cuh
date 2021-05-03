@@ -4,6 +4,8 @@
 #include <glad/glad.h>
 #include <cuda_runtime.h>
 
+#include "Structures.cuh"
+
 class PathTracer : public IPathTracer {
 	// Properties
 private:
@@ -16,6 +18,11 @@ private:
 		DrawState drawState = DrawState::Idle;
 		cudaGraphicsResource_t cudaTextureResource;
 		cudaSurfaceObject_t cudaSurface;
+
+		struct DevicePtrs {
+			Ray* rays;
+			size_t rayArrayPitch;
+		} devicePtrs;
 	} _drawingVariables;
 
 	// Methods

@@ -18,16 +18,23 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 
 	cudaStatus = cudaSetDevice(cudaDevices[0]);
 	_CheckCudaError(cudaStatus, "cudaSetDevice");
+
+	cudaStatus = cudaMallocPitch(&this->_drawingVariables.devicePtrs.rays, &this->_drawingVariables.devicePtrs.rayArrayPitch, pixelWidth * sizeof(Ray), pixelHeight);
+	_CheckCudaError(cudaStatus, "cudaMallocPitch");
 }
 
 PathTracer::~PathTracer() {
+	cudaError_t cudaStatus;
 	std::cout << "Terminating CUDA path tracer" << std::endl;
 
 	if (this->_drawingVariables.drawState == DrawState::Drawing) {
 		this->FinalizeDrawing();
 	}
 
-	cudaError_t cudaStatus = cudaDeviceReset();
+	cudaStatus = cudaFree(this->_drawingVariables.devicePtrs.rays);
+	_CheckCudaError(cudaStatus, "cudaFree");
+
+	cudaStatus = cudaDeviceReset();
 	_CheckCudaError(cudaStatus, "cudaDeviceReset");
 }
 
@@ -37,7 +44,6 @@ void PathTracer::Update() {
 
 void PathTracer::BeginDrawing() {
 	cudaError_t cudaStatus;
-	this->_drawingVariables = DrawingVariables();
 	this->_drawingVariables.drawState = DrawState::Drawing;
 
 	this->_MapTexture(
