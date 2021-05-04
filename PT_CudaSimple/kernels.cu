@@ -17,10 +17,10 @@ __global__ void Initialize(Ray* rays, size_t rayArrayPitch, int screenWidth, int
 
 	if (x >= screenWidth || y >= screenHeight) return;
 
-	float xScreen = (float)x / screenWidth;
-	float yScreen = (float)y / screenHeight;
+	float xScreen = (float)x / (screenWidth - 1);
+	float yScreen = (float)y / (screenHeight - 1);
 
 	Ray* rayPtr = GetFromPitchedMemory(rays, rayArrayPitch, x, y);
 	rayPtr->origin = origin;
-	rayPtr->direction = topLeft + (topRight - topLeft) * xScreen + (bottomLeft - topLeft) * yScreen;
+	rayPtr->direction = normalize(topLeft + (topRight - topLeft) * xScreen + (bottomLeft - topLeft) * yScreen);
 }

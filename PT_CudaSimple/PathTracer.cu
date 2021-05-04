@@ -42,6 +42,8 @@ void PathTracer::Update() {
 
 }
 
+constexpr int TEST_WIDTH = 32, TEST_HEIGHT = 32;
+
 void PathTracer::BeginDrawing() {
 	cudaError_t cudaStatus;
 	this->_drawingVariables.drawState = DrawState::Drawing;
@@ -52,8 +54,17 @@ void PathTracer::BeginDrawing() {
 		&this->_drawingVariables.cudaSurface
 	);
 
-	dim3 threadsPerBlock(16, 16);
-	DrawToTexture<<<1, threadsPerBlock>>>(this->_drawingVariables.cudaSurface);
+	dim3 threadsPerBlock(TEST_WIDTH, TEST_HEIGHT);
+	//DrawToTexture<<<1, threadsPerBlock>>>(this->_drawingVariables.cudaSurface);
+	Initialize<<<1, threadsPerBlock>>>(
+		this->_drawingVariables.devicePtrs.rays, this->_drawingVariables.devicePtrs.rayArrayPitch,
+		TEST_WIDTH, TEST_HEIGHT,
+		//this->_width, this->_height,
+		make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+		make_float4(-1.0f, 1.0f, 1.0f, 0.0f),
+		make_float4(1.0f, 1.0f, 1.0f, 0.0f),
+		make_float4(-1.0f, -1.0f, 1.0f, 0.0f)
+	);
 
 	cudaStatus = cudaGetLastError();
 	_CheckCudaError(cudaStatus, "cudaGetLastError");
