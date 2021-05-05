@@ -1,11 +1,15 @@
 #include "PathTracer.cuh"
 #include <cuda_gl_interop.h>
 #include <iostream>
+#include <curand_kernel.h>
 
 #include "kernels.cuh"
 
+constexpr int TEST_WIDTH = 8, TEST_HEIGHT = 8;
+
 PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture) {
 	cudaError_t cudaStatus;
+	curandStatus_t curandStatus;
 
 	uint cudaDeviceCount;
 	int cudaDevices[4];
@@ -21,6 +25,46 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 
 	cudaStatus = cudaMallocPitch(&this->_drawingVariables.devicePtrs.rays, &this->_drawingVariables.devicePtrs.rayArrayPitch, pixelWidth * sizeof(Ray), pixelHeight);
 	_CheckCudaError(cudaStatus, "cudaMallocPitch");
+
+	curandStateXORWOW_t* rngStates;
+	size_t rngStatesPitch;
+	cudaStatus = cudaMallocPitch(&rngStates, &rngStatesPitch, pixelWidth * sizeof(curandStateXORWOW_t), pixelHeight);
+	_CheckCudaError(cudaStatus, "cudaMallocPitch");
+
+	dim3 threadsPerBlock(TEST_WIDTH, TEST_HEIGHT);
+	InitializeRng<<<1, threadsPerBlock>>>(rngStates, rngStatesPitch);
+
+	float* rngValuesDevice;
+	cudaStatus = cudaMalloc(&rngValuesDevice, TEST_WIDTH * TEST_HEIGHT * sizeof(float));
+	_CheckCudaError(cudaStatus, "cudaMalloc");
+
+	TestRng<<<1, threadsPerBlock>>>(rngStates, rngStatesPitch, rngValuesDevice);
+
+	cudaStatus = cudaDeviceSynchronize();
+	_CheckCudaError(cudaStatus, "cudaDeviceSynchronize");
+
+	float* rngValues = (float*)calloc(TEST_WIDTH * TEST_HEIGHT, sizeof(float));
+	cudaStatus = cudaMemcpy(rngValues, rngValuesDevice, sizeof(float) * TEST_WIDTH * TEST_HEIGHT, cudaMemcpyKind::cudaMemcpyDeviceToHost);
+	_CheckCudaError(cudaStatus, "cudaMemcpy");
+
+	for (int i = 0; i < TEST_WIDTH * TEST_HEIGHT; i++) {
+		std::cout << rngValues[i] << std::endl;
+	}
+
+	cudaStatus = cudaFree(rngValuesDevice);
+	_CheckCudaError(cudaStatus, "cudaFree");
+	free(rngValues);
+
+	//curandGenerator_t curandGenerator;
+	//curandStatus = curandCreateGenerator(&curandGenerator, curandRngType::CURAND_RNG_PSEUDO_XORWOW);
+	//_CheckCurandError(curandStatus, "curandCreateGenerator");
+
+	//curandStatus = curandSetPseudoRandomGeneratorSeed(curandGenerator, 1337);
+	//_CheckCurandError(curandStatus, "curandSetPseudoRandomGeneratorSeed");
+
+
+	//curandStatus = curandDestroyGenerator(curandGenerator);
+	//_CheckCurandError(curandStatus, "curandDestroyGenerator");
 }
 
 PathTracer::~PathTracer() {
@@ -42,8 +86,6 @@ void PathTracer::Update() {
 
 }
 
-constexpr int TEST_WIDTH = 32, TEST_HEIGHT = 32;
-
 void PathTracer::BeginDrawing() {
 	cudaError_t cudaStatus;
 	this->_drawingVariables.drawState = DrawState::Drawing;
@@ -56,7 +98,7 @@ void PathTracer::BeginDrawing() {
 
 	dim3 threadsPerBlock(TEST_WIDTH, TEST_HEIGHT);
 	//DrawToTexture<<<1, threadsPerBlock>>>(this->_drawingVariables.cudaSurface);
-	Initialize<<<1, threadsPerBlock>>>(
+	InitializeRays<<<1, threadsPerBlock>>>(
 		this->_drawingVariables.devicePtrs.rays, this->_drawingVariables.devicePtrs.rayArrayPitch,
 		TEST_WIDTH, TEST_HEIGHT,
 		//this->_width, this->_height,
@@ -94,6 +136,55 @@ inline void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char
 	if (cudaStatus != cudaError::cudaSuccess) {
 		std::cout << "Failed to execute '" << functionName << "' (" << cudaGetErrorName(cudaStatus) << ")" << std::endl <<
 			"\t" << cudaGetErrorString(cudaStatus) << std::endl;
+		throw std::exception();
+	}
+}
+
+inline void PathTracer::_CheckCurandError(const curandStatus_t curandStatus, const char* functionName) {
+	if (curandStatus != curandStatus_t::CURAND_STATUS_SUCCESS) {
+		std::string errorName;
+		switch (curandStatus) {
+		case CURAND_STATUS_VERSION_MISMATCH: ///< Header file and linked library version do not match
+			errorName = "CURAND_STATUS_VERSION_MISMATCH";
+			break;
+		case CURAND_STATUS_NOT_INITIALIZED: ///< Generator not initialized
+			errorName = "CURAND_STATUS_NOT_INITIALIZED";
+			break;
+		case CURAND_STATUS_ALLOCATION_FAILED: ///< Memory allocation failed
+			errorName = "CURAND_STATUS_ALLOCATION_FAILED";
+			break;
+		case CURAND_STATUS_TYPE_ERROR: ///< Generator is wrong type
+			errorName = "CURAND_STATUS_TYPE_ERROR";
+			break;
+		case CURAND_STATUS_OUT_OF_RANGE: ///< Argument out of range
+			errorName = "CURAND_STATUS_OUT_OF_RANGE";
+			break;
+		case CURAND_STATUS_LENGTH_NOT_MULTIPLE: ///< Length requested is not a multple of dimension
+			errorName = "CURAND_STATUS_LENGTH_NOT_MULTIPLE";
+			break;
+		case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED: ///< GPU does not have double precision required by MRG32k3a
+			errorName = "CURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+			break;
+		case CURAND_STATUS_LAUNCH_FAILURE: ///< Kernel launch failure
+			errorName = "CURAND_STATUS_LAUNCH_FAILURE";
+			break;
+		case CURAND_STATUS_PREEXISTING_FAILURE: ///< Preexisting failure on library entry
+			errorName = "CURAND_STATUS_PREEXISTING_FAILURE";
+			break;
+		case CURAND_STATUS_INITIALIZATION_FAILED: ///< Initialization of CUDA failed
+			errorName = "CURAND_STATUS_INITIALIZATION_FAILED";
+			break;
+		case CURAND_STATUS_ARCH_MISMATCH: ///< Architecture mismatch, GPU does not support requested feature
+			errorName = "CURAND_STATUS_ARCH_MISMATCH";
+			break;
+		case CURAND_STATUS_INTERNAL_ERROR: ///< Internal library error
+			errorName = "CURAND_STATUS_INTERNAL_ERROR";
+			break;
+		default:
+			errorName = "Unknown error";
+			break;
+		}
+		std::cout << "Failed to execute '" << functionName << "' (" << errorName.c_str() << ")" << std::endl;
 		throw std::exception();
 	}
 }

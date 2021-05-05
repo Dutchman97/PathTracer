@@ -9,22 +9,22 @@ inline __device__ T* GetFromPitchedMemory(T* ptr, size_t pitch, int col, int row
 
 typedef unsigned int uint;
 
-struct Ray {
+struct __align__(8) Ray {
 	float4 origin;
 	float4 direction;
 };
 
-struct Vertex {
+struct __align__(4) Vertex {
 	float4 position;
 };
 
-struct Triangle {
+struct __align__(16) Triangle {
 	uint1 vertexIdx0;
 	uint1 vertexIdx1;
 	uint1 vertexIdx2;
 };
 
-struct Camera {
+struct __align__(8) Camera {
 	float4 position;
 	float4 topLeft;
 };
