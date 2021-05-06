@@ -3,57 +3,52 @@
 
 #include "kernels.cuh"
 
-PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture) {
-	cudaError_t cudaStatus;
-	curandStatus_t curandStatus;
+#ifdef _DEBUG
+#define CUDA_CALL(expr) _CheckCudaError(expr, #expr)
+#define CUDA_GET_LAST_ERROR CUDA_CALL(cudaGetLastError())
+#else
+#define CUDA_CALL(expr) expr
+#define CUDA_GET_LAST_ERROR
+#endif
+#define BLOCK_COUNT_AND_SIZE(blockSize) this->_GetBlockCount(blockSize), blockSize
 
+PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture) {
 	uint cudaDeviceCount;
 	int cudaDevices[4];
-	cudaStatus = cudaGLGetDevices(&cudaDeviceCount, cudaDevices, 4, cudaGLDeviceList::cudaGLDeviceListAll);
-	_CheckCudaError(cudaStatus, "cudaGLGetDevices");
+	CUDA_CALL(cudaGLGetDevices(&cudaDeviceCount, cudaDevices, 4, cudaGLDeviceList::cudaGLDeviceListAll));
 
 	std::cout << "Found " << cudaDeviceCount << " CUDA-capable devices linked to the current OpenGL context, using first device (device " << cudaDevices[0] << ")" << std::endl;
 
 	this->_PrintDeviceInfo(cudaDevices[0]);
+	CUDA_CALL(cudaSetDevice(cudaDevices[0]));
 
-	cudaStatus = cudaSetDevice(cudaDevices[0]);
-	_CheckCudaError(cudaStatus, "cudaSetDevice");
-
-	cudaStatus = cudaMalloc(&this->_devicePtrs.rays, pixelWidth * pixelHeight * sizeof(Ray));
-	_CheckCudaError(cudaStatus, "cudaMalloc");
+	// Allocate memory on the GPU.
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, pixelWidth * pixelHeight * sizeof(Ray)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, pixelWidth * pixelHeight * sizeof(curandStateXORWOW_t)));
 
 	// Get block size and # blocks that maximizes occupancy.
 	int minBlockCount; // Will not be used.
-	cudaStatus = cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays);
-	_CheckCudaError(cudaStatus, "cudaOccupancyMaxPotentialBlockSize");
-	cudaStatus = cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng);
-	_CheckCudaError(cudaStatus, "cudaOccupancyMaxPotentialBlockSize");
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng));
 
-	cudaStatus = cudaMalloc(&this->_devicePtrs.rngStates, pixelWidth * pixelHeight * sizeof(curandStateXORWOW_t));
-	_CheckCudaError(cudaStatus, "cudaMalloc");
-
-	InitializeRng<<<this->_GetBlockCount(this->_kernelBlockSizes.initializeRng), this->_kernelBlockSizes.initializeRng>>>(this->_devicePtrs.rngStates);
-
-	cudaStatus = cudaDeviceSynchronize();
-	_CheckCudaError(cudaStatus, "cudaDeviceSynchronize");
+	// RNG setup.
+	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(this->_devicePtrs.rngStates);
+	CUDA_GET_LAST_ERROR;
+	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 PathTracer::~PathTracer() {
-	cudaError_t cudaStatus;
 	std::cout << "Terminating CUDA path tracer" << std::endl;
 
 	if (this->_drawingVariables.drawState == DrawState::Drawing) {
 		this->FinalizeDrawing();
 	}
 
-	cudaStatus = cudaFree(this->_devicePtrs.rays);
-	_CheckCudaError(cudaStatus, "cudaFree");
+	// Free the allocated memory on the GPU.
+	CUDA_CALL(cudaFree(this->_devicePtrs.rays));
+	CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
 
-	cudaStatus = cudaFree(this->_devicePtrs.rngStates);
-	_CheckCudaError(cudaStatus, "cudaFree");
-
-	cudaStatus = cudaDeviceReset();
-	_CheckCudaError(cudaStatus, "cudaDeviceReset");
+	CUDA_CALL(cudaDeviceReset());
 }
 
 void PathTracer::Update() {
@@ -61,7 +56,6 @@ void PathTracer::Update() {
 }
 
 void PathTracer::BeginDrawing() {
-	cudaError_t cudaStatus;
 	this->_drawingVariables.drawState = DrawState::Drawing;
 
 	this->_MapTexture(
@@ -70,7 +64,7 @@ void PathTracer::BeginDrawing() {
 		&this->_drawingVariables.cudaSurface
 	);
 
-	InitializeRays<<<this->_GetBlockCount(this->_kernelBlockSizes.initializeRays), this->_kernelBlockSizes.initializeRays>>>(
+	InitializeRays<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRays)>>>(
 		this->_devicePtrs.rays,
 		this->_width, this->_height,
 		make_float4(0.0f, 0.0f, 0.0f, 0.0f),
@@ -78,9 +72,7 @@ void PathTracer::BeginDrawing() {
 		make_float4(1.0f, 1.0f, 1.0f, 0.0f),
 		make_float4(-1.0f, -1.0f, 1.0f, 0.0f)
 	);
-
-	cudaStatus = cudaGetLastError();
-	_CheckCudaError(cudaStatus, "cudaGetLastError");
+	CUDA_GET_LAST_ERROR;
 }
 
 void PathTracer::FinalizeDrawing() {
@@ -89,9 +81,7 @@ void PathTracer::FinalizeDrawing() {
 	}
 	this->_drawingVariables.drawState = DrawState::Idle;
 
-	cudaError_t cudaStatus;
-	cudaStatus = cudaDeviceSynchronize();
-	_CheckCudaError(cudaStatus, "cudaDeviceSynchronize");
+	CUDA_CALL(cudaDeviceSynchronize());
 
 	this->_UnmapTexture(
 		&this->_drawingVariables.cudaTextureResource,
@@ -117,41 +107,26 @@ inline void PathTracer::_CheckCudaError(const cudaError_t cudaStatus, const char
 }
 
 void PathTracer::_MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const {
-	cudaError_t cudaStatus;
-	cudaStatus = cudaGraphicsGLRegisterImage(cudaResourcePtr, glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore);
-	_CheckCudaError(cudaStatus, "cudaGraphicsGLRegisterImage");
+	// Mark the GL texture for use with CUDA.
+	CUDA_CALL(cudaGraphicsGLRegisterImage(cudaResourcePtr, glTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlags::cudaGraphicsRegisterFlagsSurfaceLoadStore));
+	CUDA_CALL(cudaGraphicsMapResources(1, cudaResourcePtr));
 
-	cudaStatus = cudaGraphicsMapResources(1, cudaResourcePtr);
-	_CheckCudaError(cudaStatus, "cudaGraphicsMapResources");
-
-	cudaArray_t abcdef;
-	cudaStatus = cudaGraphicsSubResourceGetMappedArray(&abcdef, *cudaResourcePtr, 0, 0);
-	_CheckCudaError(cudaStatus, "cudaGraphicsResourceGetMappedPointer");
-
+	// Create a surface object that points to the GL texture's data.
 	cudaResourceDesc resourceDesc = cudaResourceDesc();
 	resourceDesc.resType = cudaResourceType::cudaResourceTypeArray;
-	resourceDesc.res.array.array = abcdef;
-	cudaStatus = cudaCreateSurfaceObject(cudaSurfacePtr, &resourceDesc);
-	_CheckCudaError(cudaStatus, "cudaCreateSurfaceObject");
+	CUDA_CALL(cudaGraphicsSubResourceGetMappedArray(&resourceDesc.res.array.array, *cudaResourcePtr, 0, 0));
+	CUDA_CALL(cudaCreateSurfaceObject(cudaSurfacePtr, &resourceDesc));
 }
 
 void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const {
-	cudaError_t cudaStatus;
-	cudaStatus = cudaDestroySurfaceObject(*cudaSurfacePtr);
-	_CheckCudaError(cudaStatus, "cudaDestroySurfaceObject");
-
-	cudaStatus = cudaGraphicsUnmapResources(1, cudaResourcePtr);
-	_CheckCudaError(cudaStatus, "cudaGraphicsUnmapResources");
-
-	cudaStatus = cudaGraphicsUnregisterResource(*cudaResourcePtr);
-	_CheckCudaError(cudaStatus, "cudaGraphicsUnregisterResource");
+	CUDA_CALL(cudaDestroySurfaceObject(*cudaSurfacePtr));
+	CUDA_CALL(cudaGraphicsUnmapResources(1, cudaResourcePtr));
+	CUDA_CALL(cudaGraphicsUnregisterResource(*cudaResourcePtr));
 }
 
 void PathTracer::_PrintDeviceInfo(const int device) const {
-	cudaError_t cudaStatus;
 	cudaDeviceProp properties;
-	cudaStatus = cudaGetDeviceProperties(&properties, device);
-	_CheckCudaError(cudaStatus, "cudaGetDeviceProperties");
+	CUDA_CALL(cudaGetDeviceProperties(&properties, device));
 
 	std::printf("Using '%s'\n", properties.name);
 	std::printf("\tCompute capability:      %i.%i\n", properties.major, properties.minor);
