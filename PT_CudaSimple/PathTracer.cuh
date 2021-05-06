@@ -3,7 +3,8 @@
 #include <IPathTracer.h>
 #include <glad/glad.h>
 #include <cuda_runtime.h>
-#include <curand.h>
+#include <curand_kernel.h>
+#include <iostream>
 
 #include "Structures.cuh"
 
@@ -19,12 +20,17 @@ private:
 		DrawState drawState = DrawState::Idle;
 		cudaGraphicsResource_t cudaTextureResource;
 		cudaSurfaceObject_t cudaSurface;
-
-		struct DevicePtrs {
-			Ray* rays;
-			size_t rayArrayPitch;
-		} devicePtrs;
 	} _drawingVariables;
+
+	struct DevicePtrs {
+		Ray* rays;
+		curandStateXORWOW_t* rngStates;
+	} _devicePtrs;
+
+	struct KernelBlockSizes {
+		int initializeRays;
+		int initializeRng;
+	} _kernelBlockSizes;
 
 	// Methods
 public:
@@ -36,7 +42,7 @@ public:
 	~PathTracer();
 private:
 	inline static void _CheckCudaError(const cudaError_t cudaStatus, const char* functionName);
-	inline static void _CheckCurandError(const curandStatus_t curandStatus, const char* functionName);
+	inline int _GetBlockCount(const int blockSize) const;
 	void _MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
 	void _UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
 	void _PrintDeviceInfo(const int device) const;
@@ -50,6 +56,6 @@ extern "C" __declspec(dllexport) IPathTracer* Create(const unsigned int glTextur
 }
 
 extern "C" __declspec(dllexport) void Destroy(IPathTracer* pathTracer) {
-	delete pathTracer;
+	delete (PathTracer*)pathTracer;
 }
 

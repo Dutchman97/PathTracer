@@ -197,13 +197,11 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 	}
 	else if (key == GLFW_KEY_0 && action == GLFW_PRESS) {
 		CreatePathTracerFunc CreatePathTracer;
-		DestroyPathTracerFunc DestroyPathTracer;
-		bool loadLibrarySuccess = LoadPathTracerLibrary(DLL_PROJECT, &CreatePathTracer, &DestroyPathTracer);
+		bool loadLibrarySuccess = LoadPathTracerLibrary(DLL_PROJECT, &CreatePathTracer, &Program::_DestroyPathTracer);
 
 		if (loadLibrarySuccess) {
 			std::cout << "Loaded library " << DLL_PROJECT << std::endl;
 			Program::_pathTracer = CreatePathTracer(Program::_mainSurface->GetTexture(), Program::_windowWidth, Program::_windowHeight);
-			Program::_DestroyPathTracer = DestroyPathTracer;
 		}
 		else {
 			std::cout << "Could not load library " << DLL_PROJECT << std::endl;
