@@ -66,6 +66,7 @@ void PathTracer::BeginDrawing() {
 
 	InitializeRays<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRays)>>>(
 		this->_devicePtrs.rays,
+		this->_devicePtrs.rngStates,
 		this->_width, this->_height,
 		make_float4(0.0f, 0.0f, 0.0f, 0.0f),
 		make_float4(-1.0f, 1.0f, 1.0f, 0.0f),
