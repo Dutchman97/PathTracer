@@ -25,14 +25,38 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 	// Allocate memory on the GPU.
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, pixelWidth * pixelHeight * sizeof(Ray)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, pixelWidth * pixelHeight * sizeof(curandStateXORWOW_t)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.tValues, pixelWidth * pixelHeight * sizeof(float)));
+
+
+
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.vertices, 4 * sizeof(Vertex)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.triangles, 2 * sizeof(Triangle)));
+
+	Vertex vertices[4] {
+		Vertex { make_float4(-0.5f,  0.5f, 1.0f, 1.0f) },
+		Vertex { make_float4( 0.5f,  0.5f, 1.0f, 1.0f) },
+		Vertex { make_float4( 0.5f, -0.5f, 1.0f, 1.0f) },
+		Vertex { make_float4(-0.5f, -0.5f, 1.0f, 1.0f) },
+	};
+	Triangle triangles[2] {
+		Triangle { 2, 1, 0 },
+		Triangle { 0, 3, 2 },
+	};
+
+	CUDA_CALL(cudaMemcpy(this->_devicePtrs.vertices, vertices, 4 * sizeof(Vertex), cudaMemcpyKind::cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMemcpy(this->_devicePtrs.triangles, triangles, 2 * sizeof(Triangle), cudaMemcpyKind::cudaMemcpyHostToDevice));
+
+
 
 	// Get block size and # blocks that maximizes occupancy.
 	int minBlockCount; // Will not be used.
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays));
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.traverseScene, TraverseScene));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.drawToTexture, DrawToTexture));
 
 	// RNG setup.
-	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(this->_devicePtrs.rngStates);
+	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(this->_devicePtrs.rngStates, pixelWidth * pixelHeight);
 	CUDA_GET_LAST_ERROR;
 	CUDA_CALL(cudaDeviceSynchronize());
 }
@@ -47,6 +71,10 @@ PathTracer::~PathTracer() {
 	// Free the allocated memory on the GPU.
 	CUDA_CALL(cudaFree(this->_devicePtrs.rays));
 	CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
+	CUDA_CALL(cudaFree(this->_devicePtrs.tValues));
+
+	CUDA_CALL(cudaFree(this->_devicePtrs.triangles));
+	CUDA_CALL(cudaFree(this->_devicePtrs.vertices));
 
 	CUDA_CALL(cudaDeviceReset());
 }
@@ -71,7 +99,20 @@ void PathTracer::BeginDrawing() {
 		make_float4(0.0f, 0.0f, 0.0f, 0.0f),
 		make_float4(-1.0f, 1.0f, 1.0f, 0.0f),
 		make_float4(1.0f, 1.0f, 1.0f, 0.0f),
-		make_float4(-1.0f, -1.0f, 1.0f, 0.0f)
+		make_float4(-1.0f, -1.0f, 1.0f, 0.0f),
+		this->_devicePtrs.tValues
+	);
+	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
+		this->_devicePtrs.rays,
+		this->_width * this->_height,
+		this->_devicePtrs.triangles, 2,
+		this->_devicePtrs.vertices,
+		this->_devicePtrs.tValues
+	);
+	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
+		this->_drawingVariables.cudaSurface,
+		this->_width, this->_height,
+		this->_devicePtrs.tValues
 	);
 	CUDA_GET_LAST_ERROR;
 }

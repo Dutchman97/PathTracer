@@ -25,11 +25,16 @@ private:
 	struct DevicePtrs {
 		Ray* rays;
 		curandStateXORWOW_t* rngStates;
+		float* tValues;
+		Triangle* triangles;
+		Vertex* vertices;
 	} _devicePtrs;
 
 	struct KernelBlockSizes {
 		int initializeRays;
 		int initializeRng;
+		int traverseScene;
+		int drawToTexture;
 	} _kernelBlockSizes;
 
 	// Methods
