@@ -23,11 +23,11 @@ private:
 	} _drawingVariables;
 
 	struct DevicePtrs {
-		Ray* rays;
-		curandStateXORWOW_t* rngStates;
-		float* tValues;
-		Triangle* triangles;
-		Vertex* vertices;
+		Ray* rays = nullptr;
+		curandStateXORWOW_t* rngStates = nullptr;
+		float* tValues = nullptr;
+		Triangle* triangles = nullptr;
+		Vertex* vertices = nullptr;
 	} _devicePtrs;
 
 	struct KernelBlockSizes {
@@ -50,6 +50,8 @@ private:
 	inline int _GetBlockCount(const int blockSize) const;
 	void _MapTexture(const GLuint glTexture, cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
 	void _UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurfaceObject_t* cudaSurfacePtr) const;
+	void _AllocateDrawingMemory();
+	void _InitializeRendering(); // Rename maybe, sets up everything necessary *only* for the first drawing iteration of the rendering (so not e.g. memory allocation).
 	void _PrintDeviceInfo(const int device) const;
 };
 

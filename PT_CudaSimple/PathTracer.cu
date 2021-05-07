@@ -22,10 +22,15 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 	this->_PrintDeviceInfo(cudaDevices[0]);
 	CUDA_CALL(cudaSetDevice(cudaDevices[0]));
 
-	// Allocate memory on the GPU.
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, pixelWidth * pixelHeight * sizeof(Ray)));
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, pixelWidth * pixelHeight * sizeof(curandStateXORWOW_t)));
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.tValues, pixelWidth * pixelHeight * sizeof(float)));
+	// Get block size and # blocks that maximizes occupancy.
+	int minBlockCount; // Will not be used.
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.traverseScene, TraverseScene));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.drawToTexture, DrawToTexture));
+
+	this->_AllocateDrawingMemory();
+	this->_InitializeRendering();
 
 
 
@@ -39,26 +44,12 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 		Vertex { make_float4(-0.5f, -0.5f, 1.0f, 1.0f) },
 	};
 	Triangle triangles[2] {
-		Triangle { 2, 1, 0 },
-		Triangle { 0, 3, 2 },
+		Triangle { 0, 1, 2 },
+		Triangle { 2, 3, 0 },
 	};
 
 	CUDA_CALL(cudaMemcpy(this->_devicePtrs.vertices, vertices, 4 * sizeof(Vertex), cudaMemcpyKind::cudaMemcpyHostToDevice));
 	CUDA_CALL(cudaMemcpy(this->_devicePtrs.triangles, triangles, 2 * sizeof(Triangle), cudaMemcpyKind::cudaMemcpyHostToDevice));
-
-
-
-	// Get block size and # blocks that maximizes occupancy.
-	int minBlockCount; // Will not be used.
-	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays));
-	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng));
-	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.traverseScene, TraverseScene));
-	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.drawToTexture, DrawToTexture));
-
-	// RNG setup.
-	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(this->_devicePtrs.rngStates, pixelWidth * pixelHeight);
-	CUDA_GET_LAST_ERROR;
-	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 PathTracer::~PathTracer() {
@@ -132,7 +123,11 @@ void PathTracer::FinalizeDrawing() {
 }
 
 void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
+	this->_width = pixelWidth;
+	this->_height = pixelHeight;
 
+	this->_AllocateDrawingMemory();
+	this->_InitializeRendering();
 }
 
 inline int PathTracer::_GetBlockCount(const int blockSize) const {
@@ -164,6 +159,31 @@ void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurf
 	CUDA_CALL(cudaDestroySurfaceObject(*cudaSurfacePtr));
 	CUDA_CALL(cudaGraphicsUnmapResources(1, cudaResourcePtr));
 	CUDA_CALL(cudaGraphicsUnregisterResource(*cudaResourcePtr));
+}
+
+void PathTracer::_AllocateDrawingMemory() {
+	if (this->_devicePtrs.rays != nullptr) {
+		CUDA_CALL(cudaFree(this->_devicePtrs.rays));
+	}
+	if (this->_devicePtrs.rngStates != nullptr) {
+		CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
+	}
+	if (this->_devicePtrs.tValues != nullptr) {
+		CUDA_CALL(cudaFree(this->_devicePtrs.tValues));
+	}
+
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, this->_width * this->_height * sizeof(Ray)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(curandStateXORWOW_t)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.tValues, this->_width * this->_height * sizeof(float)));
+}
+
+void PathTracer::_InitializeRendering() {
+	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(
+		this->_devicePtrs.rngStates,
+		this->_width * this->_height
+	);
+	CUDA_GET_LAST_ERROR;
+	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 void PathTracer::_PrintDeviceInfo(const int device) const {
