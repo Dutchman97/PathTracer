@@ -4,8 +4,8 @@
 #define GLM_FORCE_COMPILER_UNKNOWN
 #endif
 
-#include "glm/vec4.hpp"
-#include "glm/ext/quaternion_float.hpp"
+#include "glm/glm.hpp"
+#include "glm/ext.hpp"
 
 #ifdef __NVCC__
 #undef GLM_FORCE_COMPILER_UNKNOWN

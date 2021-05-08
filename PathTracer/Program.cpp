@@ -225,37 +225,44 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 		}
 	}
 
-	constexpr float DELTA = 0.2f;
-	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-		Program::_cameraData->position += glm::vec4(0.0f, 0.0f, DELTA, 0.0f);
-	}
-	if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-		Program::_cameraData->position -= glm::vec4(0.0f, 0.0f, DELTA, 0.0f);
-	}
-	if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-		Program::_cameraData->position -= glm::vec4(DELTA, 0.0f, 0.0f, 0.0f);
-	}
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-		Program::_cameraData->position += glm::vec4(DELTA, 0.0f, 0.0f, 0.0f);
-	}
-	if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
-		Program::_cameraData->position -= glm::vec4(0.0f, DELTA, 0.0f, 0.0f);
-	}
-	if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-		Program::_cameraData->position += glm::vec4(0.0f, DELTA, 0.0f, 0.0f);
-	}
+	constexpr float ROTATION_DELTA = glm::pi<float>() / 16.0f;
+	glm::vec3 eulerRotation = glm::vec3(0.0f, 0.0f, 0.0f);
 	if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
-		Program::_cameraData->rotation *= glm::quat(glm::vec3(glm::pi<float>() *  0.0625f, 0.0f, 0.0f));
+		eulerRotation += glm::vec3(-ROTATION_DELTA, 0.0f, 0.0f);
 	}
 	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-		Program::_cameraData->rotation *= glm::quat(glm::vec3(glm::pi<float>() * -0.0625f, 0.0f, 0.0f));
+		eulerRotation += glm::vec3( ROTATION_DELTA, 0.0f, 0.0f);
 	}
 	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
-		Program::_cameraData->rotation *= glm::quat(glm::vec3(0.0f, glm::pi<float>() * -0.0625f, 0.0f));
+		eulerRotation += glm::vec3(0.0f, -ROTATION_DELTA, 0.0f);
 	}
 	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
-		Program::_cameraData->rotation *= glm::quat(glm::vec3(0.0f, glm::pi<float>() *  0.0625f, 0.0f));
+		eulerRotation += glm::vec3(0.0f,  ROTATION_DELTA, 0.0f);
 	}
+	Program::_cameraData->rotation *= glm::quat(eulerRotation);
+
+	constexpr float POSITION_DELTA = 0.1f;
+	glm::vec4 localDisplacement = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4(0.0f, 0.0f,  POSITION_DELTA, 0.0f);
+	}
+	if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4(0.0f, 0.0f, -POSITION_DELTA, 0.0f);
+	}
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4( POSITION_DELTA, 0.0f, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4(-POSITION_DELTA, 0.0f, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4(0.0f,  POSITION_DELTA, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+		localDisplacement += glm::vec4(0.0f, -POSITION_DELTA, 0.0f, 0.0f);
+	}
+	glm::vec4 displacement = Program::_cameraData->rotation * localDisplacement * glm::conjugate(Program::_cameraData->rotation);
+	Program::_cameraData->position += displacement;
 }
 
 void GLAPIENTRY Program::_MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
