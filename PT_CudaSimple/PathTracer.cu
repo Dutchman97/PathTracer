@@ -89,10 +89,10 @@ void PathTracer::BeginDrawing() {
 		this->_devicePtrs.rays,
 		this->_devicePtrs.rngStates,
 		this->_width, this->_height,
-		this->_camera.Position(),
-		this->_camera.TopLeft(),
-		this->_camera.TopRight(),
-		this->_camera.BottomLeft(),
+		this->_camera.GetPosition(),
+		this->_camera.GetTopLeft(),
+		this->_camera.GetBottomLeft(),
+		this->_camera.GetBottomRight(),
 		this->_devicePtrs.tValues
 	);
 	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(

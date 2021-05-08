@@ -24,7 +24,7 @@ __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
 	curand_init(1337 + i, 0, 0, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 topRight, float4 bottomLeft, float* tValues) {
+__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, float* tValues) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -36,7 +36,7 @@ __global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int sc
 
 	Ray* rayPtr = &rays[i];
 	rayPtr->origin = origin;
-	rayPtr->direction = normalize(topLeft + (topRight - topLeft) * xScreen + (bottomLeft - topLeft) * yScreen);
+	rayPtr->direction = normalize(bottomLeft + (bottomRight - bottomLeft) * xScreen + (topLeft - bottomLeft) * yScreen);
 
 	tValues[i] = FLT_MAX;
 }
