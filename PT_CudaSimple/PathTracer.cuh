@@ -59,9 +59,9 @@ private:
 
 typedef unsigned int uint;
 
-extern "C" __declspec(dllexport) IPathTracer* Create(const unsigned int glTexture, const int pixelWidth, const int pixelHeight) {
+extern "C" __declspec(dllexport) IPathTracer* Create(const unsigned int glTexture, const int pixelWidth, const int pixelHeight, const CameraData* cameraData) {
 	gladLoadGL();
-	return new PathTracer(glTexture, pixelWidth, pixelHeight, new CameraData());
+	return new PathTracer(glTexture, pixelWidth, pixelHeight, cameraData);
 }
 
 extern "C" __declspec(dllexport) void Destroy(IPathTracer* pathTracer) {
