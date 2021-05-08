@@ -91,10 +91,12 @@
     <CudaCompile Include="PathTracer.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="glad.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="kernels.cuh" />
     <ClInclude Include="PathTracer.cuh" />
     <ClInclude Include="Structures.cuh" />

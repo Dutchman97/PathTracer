@@ -12,6 +12,7 @@ GLuint Program::_shaderProgram;
 IPathTracer* Program::_pathTracer;
 Surface* Program::_mainSurface;
 DestroyPathTracerFunc Program::_DestroyPathTracer;
+CameraData* Program::_cameraData;
 
 constexpr GLuint VAO_COUNT = 128;
 
@@ -29,6 +30,8 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_mainSurface = new Surface(0.0f, 0.0f, 1.0f, 1.0f, windowWidth, windowHeight);
 	//Program::_pathTracer = new PathTracer(Program::_mainSurface->GetTexture(), windowWidth, windowHeight);
+
+	Program::_cameraData = new CameraData();
 }
 
 void Program::Terminate() {
@@ -48,7 +51,7 @@ void Program::Update() {
 		// the window resizing callback function gets called
 		// and thus also recreating the OpenGL texture.
 		Program::_pathTracer->BeginDrawing();
-		Program::_pathTracer->Update();
+		Program::_pathTracer->Update(Program::_cameraData);
 	}
 }
 
@@ -201,7 +204,7 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 
 		if (loadLibrarySuccess) {
 			std::cout << "Loaded library " << DLL_PROJECT << std::endl;
-			Program::_pathTracer = CreatePathTracer(Program::_mainSurface->GetTexture(), Program::_windowWidth, Program::_windowHeight);
+			Program::_pathTracer = CreatePathTracer(Program::_mainSurface->GetTexture(), Program::_windowWidth, Program::_windowHeight, Program::_cameraData);
 		}
 		else {
 			std::cout << "Could not load library " << DLL_PROJECT << std::endl;
@@ -220,6 +223,38 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 		else {
 			std::cout << "Could not unload library " << DLL_PROJECT << std::endl;
 		}
+	}
+
+	constexpr float DELTA = 0.2f;
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+		Program::_cameraData->position += glm::vec4(0.0f, 0.0f, DELTA, 0.0f);
+	}
+	if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+		Program::_cameraData->position -= glm::vec4(0.0f, 0.0f, DELTA, 0.0f);
+	}
+	if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+		Program::_cameraData->position -= glm::vec4(DELTA, 0.0f, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+		Program::_cameraData->position += glm::vec4(DELTA, 0.0f, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+		Program::_cameraData->position -= glm::vec4(0.0f, DELTA, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+		Program::_cameraData->position += glm::vec4(0.0f, DELTA, 0.0f, 0.0f);
+	}
+	if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+		Program::_cameraData->rotation *= glm::quat(glm::vec3(glm::pi<float>() *  0.0625f, 0.0f, 0.0f));
+	}
+	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+		Program::_cameraData->rotation *= glm::quat(glm::vec3(glm::pi<float>() * -0.0625f, 0.0f, 0.0f));
+	}
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+		Program::_cameraData->rotation *= glm::quat(glm::vec3(0.0f, glm::pi<float>() * -0.0625f, 0.0f));
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+		Program::_cameraData->rotation *= glm::quat(glm::vec3(0.0f, glm::pi<float>() *  0.0625f, 0.0f));
 	}
 }
 

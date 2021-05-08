@@ -6,6 +6,7 @@
 #include <curand_kernel.h>
 #include <iostream>
 
+#include "Camera.h"
 #include "Structures.cuh"
 
 class PathTracer : public IPathTracer {
@@ -14,6 +15,7 @@ private:
 	cudaGraphicsResource_t _cudaTexture;
 	int _width, _height;
 	GLuint _glTexture;
+	Camera _camera;
 
 	enum DrawState { Idle, Drawing };
 	struct DrawingVariables {
@@ -39,8 +41,8 @@ private:
 
 	// Methods
 public:
-	PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight);
-	void Update();
+	PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight, const CameraData* cameraData);
+	void Update(const CameraData* cameraData);
 	void BeginDrawing();
 	void FinalizeDrawing();
 	void Resize(const int pixelWidth, const int pixelHeight);
@@ -59,7 +61,7 @@ typedef unsigned int uint;
 
 extern "C" __declspec(dllexport) IPathTracer* Create(const unsigned int glTexture, const int pixelWidth, const int pixelHeight) {
 	gladLoadGL();
-	return new PathTracer(glTexture, pixelWidth, pixelHeight);
+	return new PathTracer(glTexture, pixelWidth, pixelHeight, new CameraData());
 }
 
 extern "C" __declspec(dllexport) void Destroy(IPathTracer* pathTracer) {

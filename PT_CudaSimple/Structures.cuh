@@ -23,8 +23,3 @@ struct Triangle {
 	uint vertexIdx1;
 	uint vertexIdx2;
 };
-
-struct Camera {
-	float4 position;
-	float4 topLeft;
-};

@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <IPathTracer.h>
+#include <CameraData.h>
 #include "Surface.h"
 
 class Program {
@@ -14,6 +15,7 @@ private:
 	static IPathTracer* _pathTracer;
 	static DestroyPathTracerFunc _DestroyPathTracer;
 	static Surface* _mainSurface;
+	static CameraData* _cameraData;
 
 	static GLuint _shaderProgram;
 

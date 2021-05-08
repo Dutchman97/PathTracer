@@ -2,6 +2,7 @@
 #include <cuda_gl_interop.h>
 
 #include "kernels.cuh"
+#include <string>
 
 #ifdef _DEBUG
 #define CUDA_CALL(expr) _CheckCudaError(expr, #expr)
@@ -12,7 +13,8 @@
 #endif
 #define BLOCK_COUNT_AND_SIZE(blockSize) this->_GetBlockCount(blockSize), blockSize
 
-PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight) : _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture) {
+PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int pixelHeight, const CameraData* cameraData)
+	: _width(pixelWidth), _height(pixelHeight), _glTexture(glTexture), _camera(cameraData, (float)pixelWidth / pixelHeight) {
 	uint cudaDeviceCount;
 	int cudaDevices[4];
 	CUDA_CALL(cudaGLGetDevices(&cudaDeviceCount, cudaDevices, 4, cudaGLDeviceList::cudaGLDeviceListAll));
@@ -70,8 +72,8 @@ PathTracer::~PathTracer() {
 	CUDA_CALL(cudaDeviceReset());
 }
 
-void PathTracer::Update() {
-
+void PathTracer::Update(const CameraData* cameraData) {
+	this->_camera.TryUpdate(cameraData);
 }
 
 void PathTracer::BeginDrawing() {
@@ -87,10 +89,10 @@ void PathTracer::BeginDrawing() {
 		this->_devicePtrs.rays,
 		this->_devicePtrs.rngStates,
 		this->_width, this->_height,
-		make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-		make_float4(-1.0f, 1.0f, 1.0f, 0.0f),
-		make_float4(1.0f, 1.0f, 1.0f, 0.0f),
-		make_float4(-1.0f, -1.0f, 1.0f, 0.0f),
+		this->_camera.Position(),
+		this->_camera.TopLeft(),
+		this->_camera.TopRight(),
+		this->_camera.BottomLeft(),
 		this->_devicePtrs.tValues
 	);
 	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
@@ -125,6 +127,8 @@ void PathTracer::FinalizeDrawing() {
 void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
 	this->_width = pixelWidth;
 	this->_height = pixelHeight;
+
+	this->_camera.Resize(pixelWidth, pixelHeight);
 
 	this->_AllocateDrawingMemory();
 	this->_InitializeRendering();
