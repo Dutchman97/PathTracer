@@ -2,9 +2,12 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <chrono>
 #include <IPathTracer.h>
 #include <CameraData.h>
 #include "Surface.h"
+
+using namespace std::chrono;
 
 class Program {
 	// Properties
@@ -18,6 +21,8 @@ private:
 	static CameraData* _cameraData;
 
 	static GLuint _shaderProgram;
+
+	static time_point<steady_clock> _lastFrame;
 
 
 

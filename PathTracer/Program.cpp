@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include <stdexcept>
 #include <IPathTracerManagement.h>
 
@@ -13,8 +14,7 @@ IPathTracer* Program::_pathTracer;
 Surface* Program::_mainSurface;
 DestroyPathTracerFunc Program::_DestroyPathTracer;
 CameraData* Program::_cameraData;
-
-constexpr GLuint VAO_COUNT = 128;
+time_point<steady_clock> Program::_lastFrame;
 
 void Program::Initialize(const int windowWidth, const int windowHeight) {
 	Program::_windowWidth = windowWidth;
@@ -32,6 +32,8 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 	//Program::_pathTracer = new PathTracer(Program::_mainSurface->GetTexture(), windowWidth, windowHeight);
 
 	Program::_cameraData = new CameraData();
+
+	Program::_lastFrame = high_resolution_clock::now();
 }
 
 void Program::Terminate() {
@@ -69,6 +71,21 @@ void Program::Draw() {
 
 	// Swap the back and front buffers.
 	glfwSwapBuffers(Program::_glfwWindow);
+
+
+	// Get the time since the end of the previous loop iteration in seconds.
+	time_point<steady_clock> now = steady_clock::now();
+	nanoseconds durationNano = now - Program::_lastFrame;
+	double seconds = duration_cast<duration<double>>(durationNano).count();
+
+	// Make the window title include the fps and the frame time.
+	std::stringstream sstream;
+	sstream << "Path Tracer - ";
+	sstream << std::setprecision(3) << 1.0 / seconds << " fps ";
+	sstream << std::setprecision(4) << "(" << seconds * 1000 << " ms)";
+	glfwSetWindowTitle(Program::_glfwWindow, sstream.str().c_str());
+
+	Program::_lastFrame = now;
 }
 
 #pragma region Private methods
@@ -167,7 +184,9 @@ void Program::_InitializeGlad() {
 	glfwSetFramebufferSizeCallback(Program::_glfwWindow, Program::_FramebufferResizeCallback);
 	glfwSetKeyCallback(Program::_glfwWindow, Program::_KeyCallback);
 }
+#pragma endregion
 
+#pragma region Callbacks
 /// <summary>
 /// Callback function for when the framebuffer gets resized.
 /// </summary>
