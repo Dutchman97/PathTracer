@@ -73,11 +73,15 @@ PathTracer::~PathTracer() {
 }
 
 void PathTracer::Update(const CameraData* cameraData) {
-	this->_camera.TryUpdate(cameraData);
+	this->_shouldRestartRendering = this->_camera.TryUpdate(cameraData);
 }
 
 void PathTracer::BeginDrawing() {
 	this->_drawingVariables.drawState = DrawState::Drawing;
+
+	if (this->_shouldRestartRendering) {
+		this->_InitializeRendering();
+	}
 
 	this->_MapTexture(
 		this->_glTexture,
@@ -105,7 +109,8 @@ void PathTracer::BeginDrawing() {
 	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
 		this->_drawingVariables.cudaSurface,
 		this->_width, this->_height,
-		this->_devicePtrs.tValues
+		this->_devicePtrs.tValues,
+		this->_frameNumber
 	);
 	CUDA_GET_LAST_ERROR;
 }
@@ -122,6 +127,7 @@ void PathTracer::FinalizeDrawing() {
 		&this->_drawingVariables.cudaTextureResource,
 		&this->_drawingVariables.cudaSurface
 	);
+	this->_frameNumber++;
 }
 
 void PathTracer::Resize(const int pixelWidth, const int pixelHeight) {
@@ -182,12 +188,14 @@ void PathTracer::_AllocateDrawingMemory() {
 }
 
 void PathTracer::_InitializeRendering() {
+	this->_shouldRestartRendering = false;
+	this->_frameNumber = 0;
+
 	InitializeRng<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.initializeRng)>>>(
 		this->_devicePtrs.rngStates,
 		this->_width * this->_height
 	);
 	CUDA_GET_LAST_ERROR;
-	CUDA_CALL(cudaDeviceSynchronize());
 }
 
 void PathTracer::_PrintDeviceInfo(const int device) const {

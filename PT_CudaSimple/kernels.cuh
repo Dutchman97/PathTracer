@@ -7,7 +7,7 @@
 #define CULLING_ENABLED
 constexpr float EPSILON = 0.000001f;
 
-__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, float* tValues);
+__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, float* tValues, uint frameNumber);
 
 __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count);
 

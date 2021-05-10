@@ -3,7 +3,7 @@
 #include <CUDA/helper_math.h>
 #include <float.h>
 
-__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, float* tValues) {
+__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, float* tValues, uint frameNumber) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -11,10 +11,13 @@ __global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int 
 	uint y = i / screenWidth;
 
 	float red = (tValues[i] > EPSILON && tValues[i] < FLT_MAX) ? 1.0f : 0.2f;
+	float4 color = make_float4(red, 0.2f, 0.2f, 1.0f);
 
 	// IMPORTANT: Surface functions use bytes for addressing memory; x-coordinate is in bytes.
 	// Y-coordinate does not need to be multiplied as the byte offset of the corresponding y-coordinate is internally calculated.
-	surf2Dwrite(make_float4(red, 0.2f, 0.2f, 1.0f), texture, x * 4 * 4, y);
+	float4 previousColor;
+	surf2Dread(&previousColor, texture, x * sizeof(float4), y);
+	surf2Dwrite(color / (frameNumber + 1) + previousColor * frameNumber / (frameNumber + 1), texture, x * sizeof(float4), y);
 }
 
 __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {

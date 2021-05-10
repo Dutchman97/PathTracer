@@ -16,6 +16,8 @@ private:
 	int _width, _height;
 	GLuint _glTexture;
 	Camera _camera;
+	uint _frameNumber;
+	bool _shouldRestartRendering;
 
 	enum DrawState { Idle, Drawing };
 	struct DrawingVariables {
