@@ -22,4 +22,21 @@ struct Triangle {
 	uint vertexIdx0;
 	uint vertexIdx1;
 	uint vertexIdx2;
+
+	uint materialIdx;
+};
+
+struct Material {
+	enum MaterialType : uint {
+		DIFFUSE, REFLECTIVE, EMISSIVE,
+	} type;
+
+	float4 color;
+
+	union {
+		struct {
+			float reflectivity;
+		} reflective;
+		// Add metadata for other materials here when they're added.
+	};
 };
