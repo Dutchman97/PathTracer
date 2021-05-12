@@ -18,6 +18,7 @@ struct Vertex {
 	float4 position;
 };
 
+// Seperate material index from vertex indices to improve data locality? A Triangle array and a TriangleMaterial array?
 struct Triangle {
 	uint vertexIdx0;
 	uint vertexIdx1;

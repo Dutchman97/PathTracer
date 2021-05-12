@@ -36,22 +36,37 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 
 
 
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.vertices, 4 * sizeof(Vertex)));
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.triangles, 2 * sizeof(Triangle)));
 
-	Vertex vertices[4] {
+	Vertex vertices[8] {
 		Vertex { make_float4(-0.5f,  0.5f, 1.0f, 1.0f) },
 		Vertex { make_float4( 0.5f,  0.5f, 1.0f, 1.0f) },
 		Vertex { make_float4( 0.5f, -0.5f, 1.0f, 1.0f) },
 		Vertex { make_float4(-0.5f, -0.5f, 1.0f, 1.0f) },
+
+		Vertex { make_float4(-0.2f,  0.5f, 0.5f, 1.0f) },
+		Vertex { make_float4( 0.2f,  0.5f, 0.5f, 1.0f) },
+		Vertex { make_float4( 0.2f,  0.5f, 0.9f, 1.0f) },
+		Vertex { make_float4(-0.2f,  0.5f, 0.9f, 1.0f) },
 	};
-	Triangle triangles[2] {
-		Triangle { 0, 1, 2 },
-		Triangle { 2, 3, 0 },
+	Triangle triangles[4] {
+		Triangle { 0, 1, 2, 0 },
+		Triangle { 2, 3, 0, 0 },
+
+		Triangle { 4, 5, 6, 1 },
+		Triangle { 6, 7, 4, 1 },
+	};
+	Material materials[2] {
+		Material { Material::MaterialType::DIFFUSE, make_float4(1.0f, 0.2f, 0.2f, 1.0f), 0.0f },
+		Material { Material::MaterialType::EMISSIVE, make_float4(10.0f, 10.0f, 10.0f, 10.0f), 0.0f },
 	};
 
-	CUDA_CALL(cudaMemcpy(this->_devicePtrs.vertices, vertices, 4 * sizeof(Vertex), cudaMemcpyKind::cudaMemcpyHostToDevice));
-	CUDA_CALL(cudaMemcpy(this->_devicePtrs.triangles, triangles, 2 * sizeof(Triangle), cudaMemcpyKind::cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.vertices, 8 * sizeof(Vertex)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.triangles, 4 * sizeof(Triangle)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.materials, 2 * sizeof(Material)));
+
+	CUDA_CALL(cudaMemcpy(this->_devicePtrs.vertices, vertices, 8 * sizeof(Vertex), cudaMemcpyKind::cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMemcpy(this->_devicePtrs.triangles, triangles, 4 * sizeof(Triangle), cudaMemcpyKind::cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMemcpy(this->_devicePtrs.materials, materials, 2 * sizeof(Material), cudaMemcpyKind::cudaMemcpyHostToDevice));
 }
 
 PathTracer::~PathTracer() {
@@ -68,6 +83,7 @@ PathTracer::~PathTracer() {
 
 	CUDA_CALL(cudaFree(this->_devicePtrs.triangles));
 	CUDA_CALL(cudaFree(this->_devicePtrs.vertices));
+	CUDA_CALL(cudaFree(this->_devicePtrs.materials));
 
 	CUDA_CALL(cudaDeviceReset());
 }
@@ -102,7 +118,7 @@ void PathTracer::BeginDrawing() {
 	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
 		this->_devicePtrs.rays,
 		this->_width * this->_height,
-		this->_devicePtrs.triangles, 2,
+		this->_devicePtrs.triangles, 4,
 		this->_devicePtrs.vertices,
 		this->_devicePtrs.tValues
 	);

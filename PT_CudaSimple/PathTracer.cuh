@@ -32,6 +32,7 @@ private:
 		float* tValues = nullptr;
 		Triangle* triangles = nullptr;
 		Vertex* vertices = nullptr;
+		Material* materials = nullptr;
 	} _devicePtrs;
 
 	struct KernelBlockSizes {
