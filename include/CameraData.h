@@ -17,7 +17,7 @@ struct CameraData {
 	float fieldOfView = 90.0f; // Vertical field of view.
 
 	inline bool operator==(const CameraData& other) {
-		return position == other.position && rotation == other.rotation;
+		return position == other.position && rotation == other.rotation && fieldOfView == other.fieldOfView;
 	}
 
 	inline bool operator!=(const CameraData& other) {

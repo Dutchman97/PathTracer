@@ -282,6 +282,13 @@ void Program::_KeyCallback(GLFWwindow* window, int key, int scancode, int action
 	}
 	glm::vec4 displacement = Program::_cameraData->rotation * localDisplacement * glm::conjugate(Program::_cameraData->rotation);
 	Program::_cameraData->position += displacement;
+
+	if (key == GLFW_KEY_1 && action == GLFW_PRESS && Program::_cameraData->fieldOfView > 5.0f) {
+		Program::_cameraData->fieldOfView -= 5.0f;
+	}
+	if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
+		Program::_cameraData->fieldOfView += 5.0f;
+	}
 }
 
 void GLAPIENTRY Program::_MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
