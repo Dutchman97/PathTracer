@@ -29,7 +29,7 @@ private:
 	struct DevicePtrs {
 		Ray* rays = nullptr;
 		curandStateXORWOW_t* rngStates = nullptr;
-		float* tValues = nullptr;
+		Intersection* intersections = nullptr;
 		Triangle* triangles = nullptr;
 		Vertex* vertices = nullptr;
 		Material* materials = nullptr;

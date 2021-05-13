@@ -79,7 +79,7 @@ PathTracer::~PathTracer() {
 	// Free the allocated memory on the GPU.
 	CUDA_CALL(cudaFree(this->_devicePtrs.rays));
 	CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
-	CUDA_CALL(cudaFree(this->_devicePtrs.tValues));
+	CUDA_CALL(cudaFree(this->_devicePtrs.intersections));
 
 	CUDA_CALL(cudaFree(this->_devicePtrs.triangles));
 	CUDA_CALL(cudaFree(this->_devicePtrs.vertices));
@@ -113,19 +113,19 @@ void PathTracer::BeginDrawing() {
 		this->_camera.GetTopLeft(),
 		this->_camera.GetBottomLeft(),
 		this->_camera.GetBottomRight(),
-		this->_devicePtrs.tValues
+		this->_devicePtrs.intersections
 	);
 	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
 		this->_devicePtrs.rays,
 		this->_width * this->_height,
 		this->_devicePtrs.triangles, 4,
 		this->_devicePtrs.vertices,
-		this->_devicePtrs.tValues
+		this->_devicePtrs.intersections
 	);
 	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
 		this->_drawingVariables.cudaSurface,
 		this->_width, this->_height,
-		this->_devicePtrs.tValues,
+		this->_devicePtrs.intersections,
 		this->_frameNumber
 	);
 	CUDA_GET_LAST_ERROR;
@@ -194,13 +194,13 @@ void PathTracer::_AllocateDrawingMemory() {
 	if (this->_devicePtrs.rngStates != nullptr) {
 		CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
 	}
-	if (this->_devicePtrs.tValues != nullptr) {
-		CUDA_CALL(cudaFree(this->_devicePtrs.tValues));
+	if (this->_devicePtrs.intersections != nullptr) {
+		CUDA_CALL(cudaFree(this->_devicePtrs.intersections));
 	}
 
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, this->_width * this->_height * sizeof(Ray)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(curandStateXORWOW_t)));
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.tValues, this->_width * this->_height * sizeof(float)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersections, this->_width * this->_height * sizeof(Intersection)));
 }
 
 void PathTracer::_InitializeRendering() {

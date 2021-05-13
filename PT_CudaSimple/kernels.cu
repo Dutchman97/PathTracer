@@ -1,16 +1,16 @@
 ﻿#include "kernels.cuh"
 
 #include <CUDA/helper_math.h>
-#include <float.h>
 
-__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, float* tValues, uint frameNumber) {
+__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, Intersection* intersections, uint frameNumber) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
 	uint x = i % screenWidth;
 	uint y = i / screenWidth;
 
-	float red = (tValues[i] > EPSILON && tValues[i] < FLT_MAX) ? 1.0f : 0.2f;
+	float t = intersections[i].t;
+	float red = (t > EPSILON && t < FLT_MAX) ? 1.0f : 0.2f;
 	float4 color = make_float4(red, 0.2f, 0.2f, 1.0f);
 
 	// IMPORTANT: Surface functions use bytes for addressing memory; x-coordinate is in bytes.
@@ -27,7 +27,7 @@ __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
 	curand_init(1337 + i, 0, 0, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, float* tValues) {
+__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -41,12 +41,12 @@ __global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int sc
 	rayPtr->origin = origin;
 	rayPtr->direction = normalize(bottomLeft + (bottomRight - bottomLeft) * xScreen + (topLeft - bottomLeft) * yScreen);
 
-	tValues[i] = FLT_MAX;
+	intersections[i] = NO_INTERSECTION;
 }
 
 // Uses the intersection algorithm by Möller and Trumbore.
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-__device__ float RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr, Vertex* vertices) {
+__device__ Intersection RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr, Vertex* vertices) {
 	int idx0 = trianglePtr->vertexIdx0;
 	int idx1 = trianglePtr->vertexIdx1;
 	int idx2 = trianglePtr->vertexIdx2;
@@ -62,7 +62,7 @@ __device__ float RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr, Verte
 	float determinant = dot(edge0, h);
 
 #ifdef CULLING_ENABLED
-	if (determinant < EPSILON) return 0.0f;
+	if (determinant < EPSILON) return NO_INTERSECTION;
 #else
 	if (determinant > -EPSILON || determinant < EPSILON) return 0.0f;
 #endif
@@ -71,24 +71,24 @@ __device__ float RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr, Verte
 	float4 s = rayPtr->origin - v0;
 
 	float u = f * dot(s, h);
-	if (u < 0.0f || u > 1.0f) return 0.0f;
+	if (u < 0.0f || u > 1.0f) return NO_INTERSECTION;
 
 	float4 q = cross(s, edge0);
 	float v = f * dot(rayPtr->direction, q);
-	if (v < 0.0f || u + v > 1.0f) return 0.0f;
+	if (v < 0.0f || u + v > 1.0f) return NO_INTERSECTION;
 
 	float t = f * dot(edge1, q);
-	return t;
+	return Intersection { t, trianglePtr->materialIdx, cross(edge0, edge1) };
 }
 
-__global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, float* tValues) {
+__global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections) {
 	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (rayIdx >= rayCount) return;
 
 	for (int triangleIdx = 0; triangleIdx < triangleCount; triangleIdx++) {
-		float t = RayIntersectsTriangle(&rays[rayIdx], &triangles[triangleIdx], vertices);
-		if (t > EPSILON && t < tValues[rayIdx]) {
-			tValues[rayIdx] = t;
+		Intersection intersection = RayIntersectsTriangle(&rays[rayIdx], &triangles[triangleIdx], vertices);
+		if (intersection.t > EPSILON && intersection.t < intersections[rayIdx].t) {
+			intersections[rayIdx] = intersection;
 		}
 	}
 }
