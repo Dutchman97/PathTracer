@@ -21,6 +21,10 @@ struct Intersection {
 	float t;
 	uint materialIdx;
 	float4 normal;
+
+	inline const bool Hit() const {
+		return t > EPSILON && t < FLT_MAX;
+	}
 };
 
 constexpr float4 ZERO_VECTOR { 0.0f, 0.0f, 0.0f, 0.0f };

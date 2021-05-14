@@ -92,3 +92,29 @@ __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int 
 		}
 	}
 }
+
+__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates) {
+	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if (!intersections[rayIdx].Hit()) return;
+
+	Material* materialPtr = &materials[intersections[rayIdx].materialIdx];
+	float4 materialColor = materialPtr->color;
+
+	switch (materialPtr->type) {
+	case Material::MaterialType::DIFFUSE:
+		float4 reflection = GetDiffuseReflection(intersections[rayIdx].normal, &rngStates[rayIdx]);
+		rays[rayIdx].origin += rays[rayIdx].direction * intersections[rayIdx].t + reflection * EPSILON;
+		rays[rayIdx].direction = reflection;
+
+		// stepBuffer[rayIdx] *= materialColor;
+		break;
+	case Material::MaterialType::EMISSIVE:
+		// frameBuffer[rayIdx] = stepBuffer[rayIdx] * materialColor;
+		break;
+	case Material::MaterialType::REFLECTIVE:
+		break;
+	default:
+		return;
+	}
+}
