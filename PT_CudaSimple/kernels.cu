@@ -27,7 +27,7 @@ __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
 	curand_init(1337 + i, 0, 0, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections) {
+__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -42,6 +42,8 @@ __global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int sc
 	rayPtr->direction = normalize(bottomLeft + (bottomRight - bottomLeft) * xScreen + (topLeft - bottomLeft) * yScreen);
 
 	intersections[i] = NO_INTERSECTION;
+
+	frameBuffer[i] = make_float4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 // Uses the intersection algorithm by Möller and Trumbore.
@@ -93,10 +95,13 @@ __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int 
 	}
 }
 
-__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates) {
+__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates, float4* frameBuffer) {
 	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x;
 
-	if (!intersections[rayIdx].Hit()) return;
+	if (!intersections[rayIdx].Hit()) {
+		frameBuffer[rayIdx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		return;
+	}
 
 	Material* materialPtr = &materials[intersections[rayIdx].materialIdx];
 	float4 materialColor = materialPtr->color;
@@ -107,14 +112,14 @@ __global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, 
 		rays[rayIdx].origin += rays[rayIdx].direction * intersections[rayIdx].t + reflection * EPSILON;
 		rays[rayIdx].direction = reflection;
 
-		// stepBuffer[rayIdx] *= materialColor;
+		frameBuffer[rayIdx] *= dot(intersections[rayIdx].normal, reflection) * 2.0f * materialColor;
 		break;
 	case Material::MaterialType::EMISSIVE:
-		// frameBuffer[rayIdx] = stepBuffer[rayIdx] * materialColor;
+		frameBuffer[rayIdx] *= materialColor;
 		break;
 	case Material::MaterialType::REFLECTIVE:
-		break;
 	default:
+		frameBuffer[rayIdx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		return;
 	}
 }

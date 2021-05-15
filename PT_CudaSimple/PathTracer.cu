@@ -113,7 +113,8 @@ void PathTracer::BeginDrawing() {
 		this->_camera.GetTopLeft(),
 		this->_camera.GetBottomLeft(),
 		this->_camera.GetBottomRight(),
-		this->_devicePtrs.intersections
+		this->_devicePtrs.intersections,
+		this->_devicePtrs.frameBuffer
 	);
 	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
 		this->_devicePtrs.rays,
@@ -197,10 +198,14 @@ void PathTracer::_AllocateDrawingMemory() {
 	if (this->_devicePtrs.intersections != nullptr) {
 		CUDA_CALL(cudaFree(this->_devicePtrs.intersections));
 	}
+	if (this->_devicePtrs.frameBuffer != nullptr) {
+		CUDA_CALL(cudaFree(this->_devicePtrs.frameBuffer));
+	}
 
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, this->_width * this->_height * sizeof(Ray)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(curandStateXORWOW_t)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersections, this->_width * this->_height * sizeof(Intersection)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.frameBuffer, this->_width * this->_height * sizeof(float4)));
 }
 
 void PathTracer::_InitializeRendering() {

@@ -30,6 +30,8 @@ private:
 		Ray* rays = nullptr;
 		curandStateXORWOW_t* rngStates = nullptr;
 		Intersection* intersections = nullptr;
+		float4* frameBuffer = nullptr;
+
 		Triangle* triangles = nullptr;
 		Vertex* vertices = nullptr;
 		Material* materials = nullptr;
