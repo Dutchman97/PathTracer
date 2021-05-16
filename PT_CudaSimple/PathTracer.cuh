@@ -41,6 +41,7 @@ private:
 		int initializeRays;
 		int initializeRng;
 		int traverseScene;
+		int intersect;
 		int drawToTexture;
 	} _kernelBlockSizes;
 

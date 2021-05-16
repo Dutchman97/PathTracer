@@ -29,6 +29,7 @@ PathTracer::PathTracer(const GLuint glTexture, const int pixelWidth, const int p
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRays, InitializeRays));
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.initializeRng, InitializeRng));
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.traverseScene, TraverseScene));
+	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.intersect, Intersect));
 	CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minBlockCount, &this->_kernelBlockSizes.drawToTexture, DrawToTexture));
 
 	this->_AllocateDrawingMemory();
@@ -116,18 +117,29 @@ void PathTracer::BeginDrawing() {
 		this->_devicePtrs.intersections,
 		this->_devicePtrs.frameBuffer
 	);
-	TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
-		this->_devicePtrs.rays,
-		this->_width * this->_height,
-		this->_devicePtrs.triangles, 4,
-		this->_devicePtrs.vertices,
-		this->_devicePtrs.intersections
-	);
+	for (int i = 0; i < 10; i++) {
+		TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
+			this->_devicePtrs.rays,
+			this->_width * this->_height,
+			this->_devicePtrs.triangles, 4,
+			this->_devicePtrs.vertices,
+			this->_devicePtrs.intersections
+		);
+		Intersect<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.intersect)>>>(
+			this->_devicePtrs.rays,
+			this->_width * this->_height,
+			this->_devicePtrs.intersections,
+			this->_devicePtrs.materials,
+			this->_devicePtrs.rngStates,
+			this->_devicePtrs.frameBuffer
+		);
+	}
 	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
 		this->_drawingVariables.cudaSurface,
 		this->_width, this->_height,
 		this->_devicePtrs.intersections,
-		this->_frameNumber
+		this->_frameNumber,
+		this->_devicePtrs.frameBuffer
 	);
 	CUDA_GET_LAST_ERROR;
 }

@@ -3,6 +3,8 @@
 #include <cuda_runtime.h>
 #include <float.h>
 
+constexpr float EPSILON = 0.000001f;
+
 template<class T>
 inline __device__ T* GetFromPitchedMemory(T* ptr, size_t pitch, int col, int row) {
 	return (T*)((char*)ptr + row * pitch) + col;
@@ -22,13 +24,13 @@ struct Intersection {
 	uint materialIdx;
 	float4 normal;
 
-	inline const bool Hit() const {
+	inline __host__ __device__ bool Hit() const {
 		return t > EPSILON && t < FLT_MAX;
 	}
 };
 
-constexpr float4 ZERO_VECTOR { 0.0f, 0.0f, 0.0f, 0.0f };
-constexpr Intersection NO_INTERSECTION { FLT_MAX, 0, ZERO_VECTOR };
+constexpr __device__ float4 ZERO_VECTOR { 0.0f, 0.0f, 0.0f, 0.0f };
+constexpr __device__ Intersection NO_INTERSECTION { FLT_MAX, 0, ZERO_VECTOR };
 
 struct Vertex {
 	float4 position;

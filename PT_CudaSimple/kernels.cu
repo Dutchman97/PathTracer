@@ -1,17 +1,17 @@
 ﻿#include "kernels.cuh"
 
-#include <CUDA/helper_math.h>
-
-__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, Intersection* intersections, uint frameNumber) {
+__global__ void DrawToTexture(cudaSurfaceObject_t texture, int screenWidth, int screenHeight, Intersection* intersections, uint frameNumber, float4* frameBuffer) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
 	uint x = i % screenWidth;
 	uint y = i / screenWidth;
 
-	float t = intersections[i].t;
-	float red = (t > EPSILON && t < FLT_MAX) ? 1.0f : 0.2f;
-	float4 color = make_float4(red, 0.2f, 0.2f, 1.0f);
+	//float t = intersections[i].t;
+	//float red = (t > EPSILON && t < FLT_MAX) ? 1.0f : 0.2f;
+	//float4 color = make_float4(red, 0.2f, 0.2f, 1.0f);
+
+	float4 color = frameBuffer[i];
 
 	// IMPORTANT: Surface functions use bytes for addressing memory; x-coordinate is in bytes.
 	// Y-coordinate does not need to be multiplied as the byte offset of the corresponding y-coordinate is internally calculated.
@@ -85,7 +85,7 @@ __device__ Intersection RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr
 
 __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections) {
 	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x;
-	if (rayIdx >= rayCount) return;
+	if (rayIdx >= rayCount || rays[rayIdx].direction == ZERO_VECTOR) return;
 
 	for (int triangleIdx = 0; triangleIdx < triangleCount; triangleIdx++) {
 		Intersection intersection = RayIntersectsTriangle(&rays[rayIdx], &triangles[triangleIdx], vertices);
@@ -95,8 +95,30 @@ __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int 
 	}
 }
 
+__device__ float4 GetDiffuseReflection(float4 normal, curandStateXORWOW_t* rngStatePtr) {
+	// Generate a random vector.
+	// We want to make sure this random vector is not longer than 1, because we normalize this vector,
+	// the resulting vector may skew towards the corners of the unit cube because of how we obtain this random vector.
+	// Also ensure this loop does execture infinitely.
+	// This still causes a slight skew towards the corners, so a better way to obtain a random unit vector is necessary.
+	float4 result;
+	uint loopCounter = 0;
+	do {
+		result = make_float4(curand_uniform(rngStatePtr), curand_uniform(rngStatePtr), curand_uniform(rngStatePtr), 0.0f);
+		result = result * 2.0f - 1.0f;
+
+		loopCounter++;
+	} while (lengthSquared(result) > 1.0f && loopCounter <= 10);
+
+	// Normalize the result and ensure it's pointing in the normal vector's hemisphere half.
+	result = normalize(result);
+	return dot(result, normal) > 0.0f ? result : -result;
+}
+
 __global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates, float4* frameBuffer) {
 	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if (rayIdx >= rayCount || rays[rayIdx].direction == ZERO_VECTOR) return;
 
 	if (!intersections[rayIdx].Hit()) {
 		frameBuffer[rayIdx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -106,20 +128,23 @@ __global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, 
 	Material* materialPtr = &materials[intersections[rayIdx].materialIdx];
 	float4 materialColor = materialPtr->color;
 
-	switch (materialPtr->type) {
-	case Material::MaterialType::DIFFUSE:
+	if (materialPtr->type == Material::MaterialType::DIFFUSE) {
 		float4 reflection = GetDiffuseReflection(intersections[rayIdx].normal, &rngStates[rayIdx]);
 		rays[rayIdx].origin += rays[rayIdx].direction * intersections[rayIdx].t + reflection * EPSILON;
 		rays[rayIdx].direction = reflection;
 
 		frameBuffer[rayIdx] *= dot(intersections[rayIdx].normal, reflection) * 2.0f * materialColor;
-		break;
-	case Material::MaterialType::EMISSIVE:
+	}
+	else if (materialPtr->type == Material::MaterialType::EMISSIVE) {
 		frameBuffer[rayIdx] *= materialColor;
-		break;
-	case Material::MaterialType::REFLECTIVE:
-	default:
+
+		// Use this as "path finished" until compaction is implemented.
+		rays[rayIdx].direction = ZERO_VECTOR;
+	}
+	else {
 		frameBuffer[rayIdx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-		return;
+
+		// Use this as "path finished" until compaction is implemented.
+		rays[rayIdx].direction = ZERO_VECTOR;
 	}
 }
