@@ -2,43 +2,46 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="PathTracer.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Host</Filter>
     </CudaCompile>
     <CudaCompile Include="kernels.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Device</Filter>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Host</Filter>
+    </ClCompile>
     <ClCompile Include="dllmain.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Host</Filter>
     </ClCompile>
     <ClCompile Include="glad.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Host</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="kernels.cuh">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Camera.h">
+      <Filter>Host</Filter>
     </ClInclude>
     <ClInclude Include="PathTracer.cuh">
-      <Filter>Header Files</Filter>
+      <Filter>Host</Filter>
     </ClInclude>
     <ClInclude Include="Structures.cuh">
-      <Filter>Header Files</Filter>
+      <Filter>Device</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="kernels.cuh">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="Functions.cuh">
+      <Filter>Device</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{c472e1c3-e706-4e83-bba4-fb578059ded3}</UniqueIdentifier>
+    <Filter Include="Host">
+      <UniqueIdentifier>{a8d98447-6443-4afc-b7a7-21c1109fc86f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{dea210ac-8ad1-42fb-99a2-270e59be1ff0}</UniqueIdentifier>
+    <Filter Include="Device">
+      <UniqueIdentifier>{8f255180-e30e-44d0-a5dd-d0b546e5c80d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

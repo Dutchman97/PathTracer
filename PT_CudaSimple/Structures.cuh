@@ -3,12 +3,9 @@
 #include <cuda_runtime.h>
 #include <float.h>
 
-constexpr float EPSILON = 0.000001f;
+#define CULLING_ENABLED
 
-template<class T>
-inline __device__ T* GetFromPitchedMemory(T* ptr, size_t pitch, int col, int row) {
-	return (T*)((char*)ptr + row * pitch) + col;
-}
+constexpr float EPSILON = 0.000001f;
 
 typedef unsigned int uint;
 

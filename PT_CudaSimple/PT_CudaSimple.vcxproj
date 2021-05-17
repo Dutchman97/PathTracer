@@ -100,6 +100,7 @@
     <ClInclude Include="kernels.cuh" />
     <ClInclude Include="PathTracer.cuh" />
     <ClInclude Include="Structures.cuh" />
+    <ClInclude Include="Functions.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

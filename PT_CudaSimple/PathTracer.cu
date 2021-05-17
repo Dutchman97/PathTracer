@@ -136,10 +136,9 @@ void PathTracer::BeginDrawing() {
 	}
 	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
 		this->_drawingVariables.cudaSurface,
+		this->_devicePtrs.frameBuffer,
 		this->_width, this->_height,
-		this->_devicePtrs.intersections,
-		this->_frameNumber,
-		this->_devicePtrs.frameBuffer
+		this->_frameNumber
 	);
 	CUDA_GET_LAST_ERROR;
 }
