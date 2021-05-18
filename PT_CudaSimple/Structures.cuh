@@ -56,3 +56,12 @@ struct Material {
 		// Add metadata for other materials here when they're added.
 	};
 };
+
+struct CompactionData {
+	struct CompactionArray {
+		uint* indices = nullptr;
+		uint length;
+	};
+
+	CompactionArray traverseScene, interact;
+};
