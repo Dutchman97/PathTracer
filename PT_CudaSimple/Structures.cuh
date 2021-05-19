@@ -4,10 +4,21 @@
 #include <float.h>
 
 #define CULLING_ENABLED
+//#define USE_CURAND
+
 
 constexpr float EPSILON = 0.000001f;
-
 typedef unsigned int uint;
+
+
+#ifdef USE_CURAND
+#include <curand_kernel.h>
+typedef curandStateXORWOW_t RngState;
+#else
+typedef uint RngState;
+#endif
+
+
 
 struct Ray {
 	float4 origin;

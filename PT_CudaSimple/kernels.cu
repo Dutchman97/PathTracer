@@ -22,22 +22,22 @@ __global__ void ResetCompactionArray(CompactionArray compactionArray) {
 	compactionArray.Reset();
 }
 
-__global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
+__global__ void InitializeRng(RngState* rngStates, int count) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= count) return;
 
-	curand_init(1337 + i, 0, 0, &rngStates[i]);
+	RNG_INIT(1337 + i, 0, i / 32, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer, CompactionArray traverseSceneCompaction) {
+__global__ void InitializeRays(Ray* rays, RngState* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer, CompactionArray traverseSceneCompaction) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
 	uint x = i % screenWidth;
 	uint y = i / screenWidth;
 
-	float xScreen = ((float)x + curand_uniform(&rngStates[i])) / screenWidth;
-	float yScreen = ((float)y + curand_uniform(&rngStates[i])) / screenHeight;
+	float xScreen = ((float)x + RNG_GET_UNIFORM(&rngStates[i])) / screenWidth;
+	float yScreen = ((float)y + RNG_GET_UNIFORM(&rngStates[i])) / screenHeight;
 
 	Ray* rayPtr = &rays[i];
 	rayPtr->origin = origin;
@@ -67,7 +67,7 @@ __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int 
 	}
 }
 
-__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates, float4* frameBuffer, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
+__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, RngState* rngStates, float4* frameBuffer, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
 	uint laneIdx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (laneIdx >= intersectCompaction.GetCount()) return;
 	uint rayIdx = intersectCompaction.Get(laneIdx);

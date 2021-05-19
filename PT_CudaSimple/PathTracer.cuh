@@ -3,7 +3,6 @@
 #include <IPathTracer.h>
 #include <glad/glad.h>
 #include <cuda_runtime.h>
-#include <curand_kernel.h>
 #include <iostream>
 
 #include "Camera.h"
@@ -28,7 +27,7 @@ private:
 
 	struct DevicePtrs {
 		Ray* rays = nullptr;
-		curandStateXORWOW_t* rngStates = nullptr;
+		RngState* rngStates = nullptr;
 		Intersection* intersections = nullptr;
 		float4* frameBuffer = nullptr;
 

@@ -21,6 +21,35 @@ inline __host__ __device__ float lengthSquared(float4 a) {
 }
 
 
+#ifdef USE_CURAND
+
+#define RNG_INIT(seed, subsequence, offset, rngStatePtr) curand_init(seed, subsequence, offset, rngStatePtr)
+#define RNG_GET_UNIFORM(rngStatePtr) curand_uniform(rngStatePtr)
+
+#else
+
+inline __device__ void RngInit(uint seed, int offset, uint* rngStatePtr) {
+	for (int i = 0; i < offset; i++) {
+		seed ^= seed << 13;
+		seed ^= seed >> 17;
+		seed ^= seed << 5;
+	}
+	*rngStatePtr = seed;
+}
+inline __device__ float RngGetUniform(uint* rngStatePtr) {
+	uint x = *rngStatePtr;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	*rngStatePtr = x;
+	return (float)x / (uint)-1;
+}
+#define RNG_INIT(seed, subsquence, offset, rngStatePtr) RngInit(seed, offset, rngStatePtr)
+#define RNG_GET_UNIFORM(rngStatePtr) RngGetUniform(rngStatePtr)
+
+#endif
+
+
 
 // Uses the intersection algorithm by Möller and Trumbore.
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
@@ -59,16 +88,16 @@ __device__ Intersection RayIntersectsTriangle(Ray* rayPtr, Triangle* trianglePtr
 	return Intersection{ t, trianglePtr->materialIdx, cross(edge0, edge1) };
 }
 
-__device__ float4 GetDiffuseReflection(float4 normal, curandStateXORWOW_t* rngStatePtr) {
+__device__ float4 GetDiffuseReflection(float4 normal, RngState* rngStatePtr) {
 	// Generate a random vector.
 	// We want to make sure this random vector is not longer than 1, because we normalize this vector,
 	// the resulting vector may skew towards the corners of the unit cube because of how we obtain this random vector.
-	// Also ensure this loop does execture infinitely.
-	// This still causes a slight skew towards the corners, so a better way to obtain a random unit vector is necessary.
+	// Also ensure this loop does not execute infinitely.
+	// This still causes a slight skew towards the corners, a better way to obtain a random unit vector is necessary.
 	float4 result;
 	uint loopCounter = 0;
 	do {
-		result = make_float4(curand_uniform(rngStatePtr), curand_uniform(rngStatePtr), curand_uniform(rngStatePtr), 0.0f);
+		result = make_float4(RNG_GET_UNIFORM(rngStatePtr), RNG_GET_UNIFORM(rngStatePtr), RNG_GET_UNIFORM(rngStatePtr), 0.0f);
 		result = result * 2.0f - 1.0f;
 
 		loopCounter++;

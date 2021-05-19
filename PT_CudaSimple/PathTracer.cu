@@ -216,7 +216,7 @@ void PathTracer::_AllocateDrawingMemory() {
 	CUDA_CALL(cudaFree(this->_devicePtrs.traverseSceneCompaction.data));
 
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, this->_width * this->_height * sizeof(Ray)));
-	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(curandStateXORWOW_t)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(RngState)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersections, this->_width * this->_height * sizeof(Intersection)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.frameBuffer, this->_width * this->_height * sizeof(float4)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersectCompaction.data, (this->_width * this->_height + 1) * sizeof(uint)));
