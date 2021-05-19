@@ -57,11 +57,23 @@ struct Material {
 	};
 };
 
-struct CompactionData {
-	struct CompactionArray {
-		uint* indices = nullptr;
-		uint length;
-	};
+struct CompactionArray {
+	uint* data = nullptr;
 
-	CompactionArray traverseScene, interact;
+	inline __device__ void Add(uint value) {
+		uint idx = atomicInc(data, 1u << 31);
+		data[idx + 1] = value;
+	}
+
+	inline __device__ uint Get(uint idx) {
+		return data[idx + 1];
+	}
+
+	inline __device__ void Reset() {
+		data[0] = 0;
+	}
+
+	inline __device__ uint GetCount() {
+		return data[0];
+	}
 };

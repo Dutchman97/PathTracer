@@ -32,6 +32,8 @@ private:
 		Intersection* intersections = nullptr;
 		float4* frameBuffer = nullptr;
 
+		CompactionArray traverseSceneCompaction, intersectCompaction;
+
 		Triangle* triangles = nullptr;
 		Vertex* vertices = nullptr;
 		Material* materials = nullptr;

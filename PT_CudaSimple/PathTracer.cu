@@ -115,23 +115,31 @@ void PathTracer::BeginDrawing() {
 		this->_camera.GetBottomLeft(),
 		this->_camera.GetBottomRight(),
 		this->_devicePtrs.intersections,
-		this->_devicePtrs.frameBuffer
+		this->_devicePtrs.frameBuffer,
+		this->_devicePtrs.traverseSceneCompaction
 	);
 	for (int i = 0; i < 10; i++) {
+		ResetCompactionArray<<<1, 1>>>(this->_devicePtrs.intersectCompaction);
 		TraverseScene<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.traverseScene)>>>(
 			this->_devicePtrs.rays,
 			this->_width * this->_height,
 			this->_devicePtrs.triangles, 4,
 			this->_devicePtrs.vertices,
-			this->_devicePtrs.intersections
+			this->_devicePtrs.intersections,
+			this->_devicePtrs.intersectCompaction,
+			this->_devicePtrs.traverseSceneCompaction
 		);
+		
+		ResetCompactionArray<<<1, 1>>>(this->_devicePtrs.traverseSceneCompaction);
 		Intersect<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.intersect)>>>(
 			this->_devicePtrs.rays,
 			this->_width * this->_height,
 			this->_devicePtrs.intersections,
 			this->_devicePtrs.materials,
 			this->_devicePtrs.rngStates,
-			this->_devicePtrs.frameBuffer
+			this->_devicePtrs.frameBuffer,
+			this->_devicePtrs.intersectCompaction,
+			this->_devicePtrs.traverseSceneCompaction
 		);
 	}
 	DrawToTexture<<<BLOCK_COUNT_AND_SIZE(this->_kernelBlockSizes.drawToTexture)>>>(
@@ -200,23 +208,19 @@ void PathTracer::_UnmapTexture(cudaGraphicsResource_t* cudaResourcePtr, cudaSurf
 }
 
 void PathTracer::_AllocateDrawingMemory() {
-	if (this->_devicePtrs.rays != nullptr) {
-		CUDA_CALL(cudaFree(this->_devicePtrs.rays));
-	}
-	if (this->_devicePtrs.rngStates != nullptr) {
-		CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
-	}
-	if (this->_devicePtrs.intersections != nullptr) {
-		CUDA_CALL(cudaFree(this->_devicePtrs.intersections));
-	}
-	if (this->_devicePtrs.frameBuffer != nullptr) {
-		CUDA_CALL(cudaFree(this->_devicePtrs.frameBuffer));
-	}
+	CUDA_CALL(cudaFree(this->_devicePtrs.rays));
+	CUDA_CALL(cudaFree(this->_devicePtrs.rngStates));
+	CUDA_CALL(cudaFree(this->_devicePtrs.intersections));
+	CUDA_CALL(cudaFree(this->_devicePtrs.frameBuffer));
+	CUDA_CALL(cudaFree(this->_devicePtrs.intersectCompaction.data));
+	CUDA_CALL(cudaFree(this->_devicePtrs.traverseSceneCompaction.data));
 
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rays, this->_width * this->_height * sizeof(Ray)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.rngStates, this->_width * this->_height * sizeof(curandStateXORWOW_t)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersections, this->_width * this->_height * sizeof(Intersection)));
 	CUDA_CALL(cudaMalloc(&this->_devicePtrs.frameBuffer, this->_width * this->_height * sizeof(float4)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.intersectCompaction.data, (this->_width * this->_height + 1) * sizeof(uint)));
+	CUDA_CALL(cudaMalloc(&this->_devicePtrs.traverseSceneCompaction.data, (this->_width * this->_height + 1) * sizeof(uint)));
 }
 
 void PathTracer::_InitializeRendering() {

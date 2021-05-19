@@ -18,6 +18,10 @@ __global__ void DrawToTexture(cudaSurfaceObject_t texture, float4* frameBuffer, 
 	surf2Dwrite(color * reciprocal + previousColor * frameNumber * reciprocal, texture, x * sizeof(float4), y);
 }
 
+__global__ void ResetCompactionArray(CompactionArray compactionArray) {
+	compactionArray.Reset();
+}
+
 __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= count) return;
@@ -25,7 +29,7 @@ __global__ void InitializeRng(curandStateXORWOW_t* rngStates, int count) {
 	curand_init(1337 + i, 0, 0, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer) {
+__global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer, CompactionArray traverseSceneCompaction) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -43,45 +47,30 @@ __global__ void InitializeRays(Ray* rays, curandStateXORWOW_t* rngStates, int sc
 
 	frameBuffer[i] = make_float4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	// if (i == 0) {
-	//     traverseSceneCompaction.count = screenWidth * screenHeight;
-	// }
-	// traverseSceneCompaction.array[i] = i;
+	if (i == 0) {
+		traverseSceneCompaction.data[0] = screenWidth * screenHeight;
+	}
+	traverseSceneCompaction.data[i + 1] = i;
 }
 
-// Before TraverseScene:
-// intersectionCompaction.count = 0;
-
-__global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections) {
-	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x; // laneIdx
-	if (rayIdx >= rayCount || rays[rayIdx].direction == ZERO_VECTOR) return; // if (laneIdx >= traverseSceneCompaction.count) return;
-
-	// uint rayIdx = traverseSceneCompaction.array[laneIdx];
+__global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
+	uint laneIdx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (laneIdx >= traverseSceneCompaction.GetCount()) return;
+	uint rayIdx = traverseSceneCompaction.Get(laneIdx);
 
 	for (int triangleIdx = 0; triangleIdx < triangleCount; triangleIdx++) {
 		Intersection intersection = RayIntersectsTriangle(&rays[rayIdx], &triangles[triangleIdx], vertices);
 		if (intersection.t > EPSILON && intersection.t < intersections[rayIdx].t) {
 			intersections[rayIdx] = intersection;
-
-			// uint intersectionIdx = atomic_add(intersectionCompaction.count);
-			// intersectionCompaction.array[intersectionIdx] = rayIdx;
+			intersectCompaction.Add(rayIdx);
 		}
 	}
 }
 
-// Before Intersect:
-// traverseSceneCompaction.count = 0;
-
-__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates, float4* frameBuffer) {
-	uint rayIdx = threadIdx.x + blockIdx.x * blockDim.x; // laneIdx
-	if (rayIdx >= rayCount || rays[rayIdx].direction == ZERO_VECTOR) return; // if (laneIdx >= intersectCompaction.count) return;
-
-	if (!intersections[rayIdx].Hit()) { // Remove when compaction implemented
-		frameBuffer[rayIdx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-		return;
-	}
-
-	// uint rayIdx = intersectCompaction.array[laneIdx]
+__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, curandStateXORWOW_t* rngStates, float4* frameBuffer, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
+	uint laneIdx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (laneIdx >= intersectCompaction.GetCount()) return;
+	uint rayIdx = intersectCompaction.Get(laneIdx);
 
 	Material* materialPtr = &materials[intersections[rayIdx].materialIdx];
 	float4 materialColor = materialPtr->color;
@@ -94,17 +83,12 @@ __global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, 
 
 		radiance = dot(intersections[rayIdx].normal, reflection) * 2.0f * materialColor;
 
-		// uint traverseSceneIdx = atomic_add(traverseSceneCompaction.count);
-		// traverseSceneCompaction.array[traverseSceneIdx] = rayIdx;
+		traverseSceneCompaction.Add(rayIdx);
 	}
 	else if (materialPtr->type == Material::MaterialType::EMISSIVE) {
-		// Use this as "path finished" until compaction is implemented.
-		rays[rayIdx].direction = ZERO_VECTOR;
 		radiance = materialColor;
 	}
 	else {
-		// Use this as "path finished" until compaction is implemented.
-		rays[rayIdx].direction = ZERO_VECTOR;
 		radiance = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
