@@ -6,6 +6,11 @@
 #include <iomanip>
 #include <stdexcept>
 #include <IPathTracerManagement.h>
+#include <glad/glad_wgl.h>
+
+#define GLFW_EXPOSE_NATIVE_WGL
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 GLFWwindow* Program::_glfwWindow;
 int Program::_windowWidth, Program::_windowHeight;
@@ -22,9 +27,6 @@ void Program::Initialize(const int windowWidth, const int windowHeight) {
 
 	Program::_InitializeGlfw();
 	Program::_InitializeGlad();
-
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(Program::_MessageCallback, 0);
 
 	Program::_shaderProgram = Program::_CreateShaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
@@ -176,11 +178,16 @@ void Program::_InitializeGlfw() {
 }
 
 void Program::_InitializeGlad() {
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) && !gladLoadWGLLoader((GLADloadproc)glfwGetProcAddress, wglGetCurrentDC())) {
 		Program::Terminate();
 		throw std::exception("Unable to initialize OpenGL with glad.");
 	}
+
 	glViewport(0, 0, Program::_windowWidth, Program::_windowHeight);
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(Program::_MessageCallback, 0);
+	wglSwapIntervalEXT(0);
+
 	glfwSetFramebufferSizeCallback(Program::_glfwWindow, Program::_FramebufferResizeCallback);
 	glfwSetKeyCallback(Program::_glfwWindow, Program::_KeyCallback);
 }
