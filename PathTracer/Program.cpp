@@ -178,11 +178,11 @@ void Program::_InitializeGlfw() {
 }
 
 void Program::_InitializeGlad() {
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) && !gladLoadWGLLoader((GLADloadproc)glfwGetProcAddress, wglGetCurrentDC())) {
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadWGLLoader((GLADloadproc)glfwGetProcAddress, wglGetCurrentDC())) {
 		Program::Terminate();
 		throw std::exception("Unable to initialize OpenGL with glad.");
 	}
-
+	
 	glViewport(0, 0, Program::_windowWidth, Program::_windowHeight);
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(Program::_MessageCallback, 0);
