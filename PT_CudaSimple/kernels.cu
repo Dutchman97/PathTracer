@@ -29,7 +29,7 @@ __global__ void InitializeRng(RngState* rngStates, int count) {
 	RNG_INIT(1337 + i, 0, i / 32, &rngStates[i]);
 }
 
-__global__ void InitializeRays(Ray* rays, RngState* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* frameBuffer, CompactionArray traverseSceneCompaction) {
+__global__ void InitializeRays(Ray* rays, RngState* rngStates, int screenWidth, int screenHeight, float4 origin, float4 topLeft, float4 bottomLeft, float4 bottomRight, Intersection* intersections, float4* stepBuffer, float4* frameBuffer, CompactionArray traverseSceneCompaction) {
 	uint i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i >= screenWidth * screenHeight) return;
 
@@ -45,7 +45,8 @@ __global__ void InitializeRays(Ray* rays, RngState* rngStates, int screenWidth, 
 
 	intersections[i] = NO_INTERSECTION;
 
-	frameBuffer[i] = make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+	stepBuffer[i] = float4 { 1.0f, 1.0f, 1.0f, 1.0f };
+	frameBuffer[i] = float4 { 0.0f, 0.0f, 0.0f, 1.0f };
 
 	if (i == 0) {
 		traverseSceneCompaction.data[0] = screenWidth * screenHeight;
@@ -53,7 +54,7 @@ __global__ void InitializeRays(Ray* rays, RngState* rngStates, int screenWidth, 
 	traverseSceneCompaction.data[i + 1] = i;
 }
 
-__global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
+__global__ void TraverseScene(Ray* rays, Triangle* triangles, int triangleCount, Vertex* vertices, Intersection* intersections, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
 	uint laneIdx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (laneIdx >= traverseSceneCompaction.GetCount()) return;
 	uint rayIdx = traverseSceneCompaction.Get(laneIdx);
@@ -67,30 +68,27 @@ __global__ void TraverseScene(Ray* rays, int rayCount, Triangle* triangles, int 
 	}
 }
 
-__global__ void Intersect(Ray* rays, int rayCount, Intersection* intersections, Material* materials, RngState* rngStates, float4* frameBuffer, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
+__global__ void Intersect(Ray* rays, Intersection* intersections, Material* materials, RngState* rngStates, float4* stepBuffer, float4* frameBuffer, CompactionArray intersectCompaction, CompactionArray traverseSceneCompaction) {
 	uint laneIdx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (laneIdx >= intersectCompaction.GetCount()) return;
 	uint rayIdx = intersectCompaction.Get(laneIdx);
 
 	Material* materialPtr = &materials[intersections[rayIdx].materialIdx];
 	float4 materialColor = materialPtr->color;
-	float4 radiance;
 
 	if (materialPtr->type == Material::MaterialType::DIFFUSE) {
 		float4 reflection = GetDiffuseReflection(intersections[rayIdx].normal, &rngStates[rayIdx]);
 		rays[rayIdx].origin += rays[rayIdx].direction * intersections[rayIdx].t + reflection * EPSILON;
 		rays[rayIdx].direction = reflection;
 
-		radiance = dot(intersections[rayIdx].normal, reflection) * 2.0f * materialColor;
+		stepBuffer[rayIdx] *= dot(intersections[rayIdx].normal, reflection) * 2.0f * materialColor;
 
 		traverseSceneCompaction.Add(rayIdx);
 	}
 	else if (materialPtr->type == Material::MaterialType::EMISSIVE) {
-		radiance = materialColor;
+		frameBuffer[rayIdx] = stepBuffer[rayIdx] * materialColor;
 	}
 	else {
-		radiance = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		stepBuffer[rayIdx] *= make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
-
-	frameBuffer[rayIdx] *= radiance;
 }

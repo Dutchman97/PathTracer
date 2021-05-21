@@ -29,7 +29,7 @@ private:
 		Ray* rays = nullptr;
 		RngState* rngStates = nullptr;
 		Intersection* intersections = nullptr;
-		float4* frameBuffer = nullptr;
+		float4* frameBuffer = nullptr, *stepBuffer = nullptr;
 
 		CompactionArray traverseSceneCompaction, intersectCompaction;
 
